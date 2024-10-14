@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "type_traits": "cpp",
+        "chrono": "cpp",
+        "*.ipp": "cpp",
+        "condition_variable": "cpp",
+        "future": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "string_view": "cpp",
+        "system_error": "cpp"
+    }
+}

@@ -1,3 +1,6 @@
+[submodule "utils/external/popl"]
+	path = utils/external/popl
+	url = https://github.com/ludojori/popl.git
 [submodule "utils/external/Simple-Web-Server"]
 	path = utils/external/Simple-Web-Server
-	url = git@github.com:eidheim/Simple-Web-Server.git
+	url = https://github.com/ludojori/Simple-Web-Server.git
