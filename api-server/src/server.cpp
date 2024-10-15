@@ -5,25 +5,37 @@
 
 #include "options.h"
 
-void run()
-{
-	std::cout << "Initiating server..." << std::endl;
-	
-
-	SimpleWeb::Server<SimpleWeb::HTTPS> server("server.crt", "server.key");
-	server.config.port = 8080;
-
-	std::thread server_thread([&server]{
-		server.start();
-	});
-	
-	SimpleWeb::Client<SimpleWeb::HTTPS> client("localhost:8080", false);
-	std::cout << "Server is running..." << std::endl;
-}
 
 int main()
 {
-	run();
+	try
+	{
+		std::cout << "Parsing config.ini..." << std::endl;
 
+		ApiServer::Options options("config.ini");
+
+		std::cout << "Done." << std::endl;
+		std::cout << "Initiating server..." << std::endl;
+
+		SimpleWeb::Server<SimpleWeb::HTTPS> server(options.getCertificatePath(), options.getPrivateKeyPath());
+		server.config.address = options.getHost();
+		server.config.port = options.getPort();
+		server.config.reuse_address = false;
+		server.config.max_request_streambuf_size = options.getMaxRequestStreambufSize();
+		server.config.thread_pool_size = options.getThreadPoolSize();
+		server.config.timeout_content = options.getTimeoutContent();
+		server.config.timeout_request = options.getTimeoutRequest();
+
+		server.start();
+	}
+	catch(const popl::invalid_option& e)
+	{
+		std::cerr << "Failed to parse options, error: " << e.what() << '\n';
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << "Fatal error: " << e.what() << '\n';
+	}
+	
 	return 0;
 }
