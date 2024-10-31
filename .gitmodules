@@ -4,3 +4,6 @@
 [submodule "utils/external/Simple-Web-Server"]
 	path = utils/external/Simple-Web-Server
 	url = https://github.com/ludojori/Simple-Web-Server.git
+[submodule "utils/external/valijson"]
+	path = utils/external/valijson
+	url = https://github.com/tristanpenman/valijson

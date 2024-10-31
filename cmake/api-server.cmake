@@ -5,6 +5,7 @@ include_directories(
 add_executable(apiserver
     api-server/src/server.cpp
     api-server/src/options.cpp
+    api-server/src/provider.cpp
 )
 
 set_target_properties(apiserver
@@ -14,6 +15,7 @@ set_target_properties(apiserver
 
 target_link_libraries(apiserver
     simple-web-server
+    mysqlcppconn
 )
 
 configure_file(
