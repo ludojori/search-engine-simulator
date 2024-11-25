@@ -15,15 +15,19 @@ namespace Utils
         Destination,
         IsOneWay,
         IsRoundtrip,
-        Carriers
+        FareCarrier,
+        MarketingCarrier,
+        OperatingCarrier
     };
 
     static const std::unordered_map<PairField, std::string> pairFields = {
-        { PairField::Origin, "origin" },
-        { PairField::Destination, "destination" },
-        { PairField::IsOneWay, "isOneWay" },
-        { PairField::IsRoundtrip, "isRoundtrip" },
-        { PairField::Carriers, "carriers" }
+        { PairField::Origin,            "origin" },
+        { PairField::Destination,       "destination" },
+        { PairField::IsOneWay,          "isOneWay" },
+        { PairField::IsRoundtrip,       "isRoundtrip" },
+        { PairField::FareCarrier,       "fareCarrier" },
+        { PairField::MarketingCarrier,  "marketingCarrier" },
+        { PairField::OperatingCarrier,  "operatingCarrier" }
     };
 
     inline std::string getPairFieldName(const PairField val)
@@ -37,32 +41,36 @@ namespace Utils
         std::string destination;
         bool isOneWay;
         bool isRoundtrip;
-        std::vector<std::string> carriers;
+        std::string fareCarrier;
+        std::string marketingCarrier;
+        std::string operatingCarrier;
+
+        std::string serialize()
+        {
+            try
+            {
+                boost::property_tree::ptree ptree;
+                std::ostringstream buf;
+
+                ptree.put(getPairFieldName(PairField::Origin), origin);
+                ptree.put(getPairFieldName(PairField::Destination), destination);
+                ptree.put(getPairFieldName(PairField::IsOneWay), isOneWay);
+                ptree.put(getPairFieldName(PairField::IsRoundtrip), isRoundtrip);
+                ptree.put(getPairFieldName(PairField::FareCarrier), fareCarrier);
+                ptree.put(getPairFieldName(PairField::MarketingCarrier), marketingCarrier);
+                ptree.put(getPairFieldName(PairField::OperatingCarrier), operatingCarrier);
+
+                boost::property_tree::write_json(buf, ptree, false);
+
+                return buf.str();
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "An error occured while serializing a pair: " << e.what() << '\n';
+                return std::string();
+            }
+        }
     };
-
-    std::string getSerialized(const Pair& pair)
-    {
-        try
-        {
-            boost::property_tree::ptree ptree;
-            std::ostringstream buf;
-
-            ptree.put(getPairFieldName(PairField::Origin), pair.origin);
-            ptree.put(getPairFieldName(PairField::Destination), pair.destination);
-            ptree.put(getPairFieldName(PairField::IsOneWay), pair.isOneWay);
-            ptree.put(getPairFieldName(PairField::IsRoundtrip), pair.isRoundtrip);
-            //ptree.put(getPairFieldName(PairField::Carriers), pair.carriers);
-
-            boost::property_tree::write_json(buf, ptree, false);
-
-            return buf.str();
-        }
-        catch(const std::exception& e)
-        {
-            std::cerr << "An error occured while serializing a pair: " << e.what() << '\n';
-            return std::string();
-        }
-    }
 
     Pair getDeserialized(const std::string& serializedPair)
     {
@@ -77,10 +85,9 @@ namespace Utils
             pair.destination = ptree.get<std::string>(getPairFieldName(PairField::Destination));
             pair.isOneWay = ptree.get<bool>(getPairFieldName(PairField::IsOneWay));
             pair.isRoundtrip = ptree.get<bool>(getPairFieldName(PairField::IsRoundtrip));
-            for(const auto& node : ptree.get_child(getPairFieldName(PairField::Carriers)))
-            {
-                pair.carriers.emplace_back(node.second.get_value<std::string>());
-            }
+            pair.fareCarrier = ptree.get<std::string>(getPairFieldName(PairField::FareCarrier));
+            pair.marketingCarrier = ptree.get<std::string>(getPairFieldName(PairField::MarketingCarrier));
+            pair.operatingCarrier = ptree.get<std::string>(getPairFieldName(PairField::OperatingCarrier));
 
             return pair;
         }

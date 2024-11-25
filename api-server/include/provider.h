@@ -14,13 +14,6 @@ namespace ApiServer
             Write
         };
 
-        enum class UserType
-        {
-            Client = 0,
-            Internal,
-            Manager
-        };
-
         enum class OperationType
         {
             Read = 0,

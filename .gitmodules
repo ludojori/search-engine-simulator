@@ -7,3 +7,6 @@
 [submodule "utils/external/valijson"]
 	path = utils/external/valijson
 	url = https://github.com/tristanpenman/valijson
+[submodule "utils/external/mysql-connector-cpp"]
+	path = utils/external/mysql-connector-cpp
+	url = https://github.com/mysql/mysql-connector-cpp.git
