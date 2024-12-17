@@ -19,7 +19,7 @@ namespace ApiServer
         _op.add<popl::Value<int>, popl::Attribute::required>("", "mysql.port", "The port used to connect to the MySQL database.", 3306);
         _op.add<popl::Value<std::string>, popl::Attribute::required>("", "mysql.username", "The username to authenticate when connecting to the MySQL database.", "");
         _op.add<popl::Value<std::string>, popl::Attribute::required>("", "mysql.password", "The password for the MySQL user.", "");
-        _op.add<popl::Value<std::string>, popl::Attribute::required>("", "mysql.database", "", "");
+        _op.add<popl::Value<std::string>, popl::Attribute::required>("", "mysql.database", "The database currently used by this server.", "");
 
         _op.parse(pathToConfig);
     }

@@ -1,6 +1,13 @@
 #pragma once
 
 #include <string>
+#include <memory>
+
+namespace sql
+{
+    class Driver;
+    class Connection;
+}
 
 namespace ApiServer
 {
@@ -24,7 +31,8 @@ namespace ApiServer
         explicit Provider(const std::string& dbHost,
                           const int dbPort,
                           const std::string& username,
-                          const std::string& password);
+                          const std::string& password,
+                          const std::string& database);
 
         void insertUser(const std::string& content);
         void insertPair(const std::string& content);
@@ -32,14 +40,18 @@ namespace ApiServer
         std::string getPairs();
         std::string getPair(const std::string& origin, const std::string& destination);
 
+        ~Provider();
+
     private:
         void authorizeOperation(OperationType opType);
         PermissionLevel acquirePermissionLevel();
 
-        // mysqlpp connection
         const std::string _dbHost;
         const int _dbPort;
         const std::string _username;
         const std::string _password;
+        const std::string _database;
+        sql::Driver* _driver;
+        sql::Connection* _connection;
     };
 }

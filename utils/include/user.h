@@ -53,4 +53,26 @@ namespace Utils
             }
         }
     };
+
+    User parseUser(const std::string& serializedUser)
+    {
+        try
+        {
+            std::istringstream is(serializedUser);
+            boost::property_tree::ptree ptree;
+            boost::property_tree::read_json(is, ptree);
+            User user;
+
+            user.username = ptree.get<std::string>("username");
+            user.password = ptree.get<std::string>("password");
+            user.type = static_cast<UserType>(ptree.get<int>("type"));
+
+            return user;
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << "An error occured while deserializing a pair: " << e.what() << '\n';
+            return User();
+        }
+    }
 }

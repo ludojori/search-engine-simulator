@@ -7,6 +7,10 @@
 #include "provider.h"
 #include "server-exceptions.h"
 
+#include <mysql_connection.h>
+#include <mysql_driver.h>
+#include <cppconn/statement.h>
+
 using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
 
@@ -36,7 +40,8 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 			const std::string content = request->content.string();
 			provider->insertUser(content);
 			*response << HTTPCREATED << "\r\n"
-					  << "Content-Length: " << content.length() << "\r\n\r\n";
+					  << "Content-Length: " << content.length()
+					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
@@ -48,9 +53,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
-			const std::string users = provider->getUsers();
 			*response << HTTPOK << "\r\n"
-					  << "{users:" << users << "}";
+					  << "{\"users\":" << provider->getUsers() << "}"
+					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
@@ -65,7 +70,8 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 			const std::string content = request->content.string();
 			provider->insertPair(content);
 			*response << HTTPCREATED << "\r\n"
-					  << "Content-Length: " << content.length() << "\r\n\r\n";
+					  << "Content-Length: " << content.length()
+					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
@@ -79,7 +85,8 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 		{
 			const std::string pairs = provider->getPairs();
 			*response << HTTPOK << "\r\n"
-					  << "{pairs:" << pairs << "}";
+					  << "{\"pairs\":" << pairs << "}"
+					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
@@ -95,7 +102,8 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 			const size_t delimiter = filter.find('-');
 			const std::string pair = provider->getPair(pair.substr(0, delimiter), pair.substr(delimiter + 1));
 			*response << HTTPOK << "\r\n"
-					  << "{pair:" << pair << "}";
+					  << "{\"pair\":" << pair << "}"
+					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
@@ -118,7 +126,8 @@ int main()
 		auto provider = std::make_shared<ApiServer::Provider>(options.getMySqlHost(),
 									 						  options.getMySqlPort(),
 									 						  options.getMySqlUsername(),
-									 						  options.getMySqlPassword());
+									 						  options.getMySqlPassword(),
+															  options.getMySqlDatabase());
 
 		HttpsServer server(options.getCertificatePath(), options.getPrivateKeyPath());
 
@@ -126,6 +135,12 @@ int main()
 		addResources(server, provider);
 
 		server.start();
+
+		// VV: service goal
+		/**
+		 * DDoS mitigation: residential proxy, WAF, Load Balancer
+		 * Sql Injection mitigation: user roles, request schemas, sql driver security
+		 */
 	}
 	catch(const popl::invalid_option& e)
 	{

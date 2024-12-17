@@ -72,7 +72,7 @@ namespace Utils
         }
     };
 
-    Pair getDeserialized(const std::string& serializedPair)
+    Pair parsePair(const std::string& serializedPair)
     {
         try
         {
