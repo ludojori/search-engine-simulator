@@ -45,7 +45,7 @@ namespace Utils
         std::string marketingCarrier;
         std::string operatingCarrier;
 
-        std::string serialize()
+        std::string serialize() const
         {
             try
             {

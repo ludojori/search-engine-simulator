@@ -1,15 +1,10 @@
 #include <iostream>
 #include <memory>
-#include <mysql_driver.h>
 
 #include "server_https.hpp"
 #include "options.h"
 #include "provider.h"
 #include "server-exceptions.h"
-
-#include <mysql_connection.h>
-#include <mysql_driver.h>
-#include <cppconn/statement.h>
 
 using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
@@ -121,7 +116,7 @@ int main()
 		ApiServer::Options options("config.ini");
 
 		std::cout << "Done." << std::endl;
-		std::cout << "Initiating server on port " << options.getPort() << "..." << std::endl;
+		std::cout << "Server is running on port " << options.getPort() << "..." << std::endl;
 
 		auto provider = std::make_shared<ApiServer::Provider>(options.getMySqlHost(),
 									 						  options.getMySqlPort(),
@@ -145,10 +140,12 @@ int main()
 	catch(const popl::invalid_option& e)
 	{
 		std::cerr << "Failed to parse options, error: " << e.what() << '\n';
+		return 1;
 	}
 	catch(const std::exception& e)
 	{
 		std::cerr << "Fatal error: " << e.what() << '\n';
+		return 2;
 	}
 	
 	return 0;

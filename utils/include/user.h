@@ -32,7 +32,7 @@ namespace Utils
         std::string password;
         UserType type;
 
-        std::string serialize()
+        std::string serialize() const
         {
             try
             {
@@ -71,7 +71,7 @@ namespace Utils
         }
         catch(const std::exception& e)
         {
-            std::cerr << "An error occured while deserializing a pair: " << e.what() << '\n';
+            std::cerr << "An error occured while deserializing a user: " << e.what() << '\n';
             return User();
         }
     }

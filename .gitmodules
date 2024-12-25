@@ -10,3 +10,6 @@
 [submodule "utils/external/mysql-connector-cpp"]
 	path = utils/external/mysql-connector-cpp
 	url = https://github.com/mysql/mysql-connector-cpp.git
+[submodule "utils/external/Catch2"]
+	path = utils/external/Catch2
+	url = https://github.com/catchorg/Catch2.git

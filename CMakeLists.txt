@@ -38,6 +38,7 @@ find_library(mysql++
 set(valijson_BUILD_TESTS OFF CACHE BOOL "Don't build valijson tests.")
 
 add_subdirectory(utils/external/Simple-Web-Server EXCLUDE_FROM_ALL)
+add_subdirectory(utils/external/Catch2 EXCLUDE_FROM_ALL)
 
 include_directories(
     utils/include
