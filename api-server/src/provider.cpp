@@ -26,11 +26,10 @@ namespace ApiServer
         _connection->setSchema(_database);
     }
 
-    void Provider::insertUser(const std::string& serializedUser)
+    void Provider::insertUser(const Utils::User& user)
     {
         try
         {
-            const Utils::User user = Utils::parseUser(serializedUser);
             auto stmt = Utils::PointerWrapper(_connection->prepareStatement(usersRawStmt));
             stmt->setString(1, user.username);
             stmt->setString(2, user.password);
@@ -43,11 +42,10 @@ namespace ApiServer
         }
     }
 
-    void Provider::insertPair(const std::string& serializedPair)
+    void Provider::insertPair(const Utils::Pair& pair)
     {
         try
         {
-            const Utils::Pair pair = Utils::parsePair(serializedPair);
             auto stmt = Utils::PointerWrapper(_connection->prepareStatement(pairsRawStmt));
             stmt->setString(1, pair.origin);
             stmt->setString(2, pair.destination);

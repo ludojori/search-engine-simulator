@@ -4,10 +4,15 @@
 #include "server_https.hpp"
 #include "options.h"
 #include "provider.h"
+#include "user.h"
+#include "pair.h"
 #include "server-exceptions.h"
+#include <filesystem>
 
 using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
+
+static const char* executableName = "server";
 
 /**
  * Apply options to server settings prior to initialization.
@@ -33,14 +38,18 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 		try
 		{
 			const std::string content = request->content.string();
-			provider->insertUser(content);
+			const auto user = parseUser(content);
+			provider->insertUser(user);
 			*response << HTTPCREATED << "\r\n"
+					  << "Content-Type: application/json\r\n"
 					  << "Content-Length: " << content.length()
 					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
-			*response << e.what();
+			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
+					  << e.what()
+					  << "\r\n\r\n";
 		}
 	};
 
@@ -48,13 +57,18 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
+			const auto responseStr = std::string("{\"users\":") + provider->getUsers() + "}";
 			*response << HTTPOK << "\r\n"
-					  << "{\"users\":" << provider->getUsers() << "}"
+					  << "Content-Type: application/json\r\n"
+					  << "Content-Length: " << responseStr.size() << "\r\n"
+					  << responseStr
 					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
-			*response << e.what();
+			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
+					  << e.what()
+					  << "\r\n\r\n";
 		}
 	};
 
@@ -63,14 +77,18 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 		try
 		{
 			const std::string content = request->content.string();
-			provider->insertPair(content);
+			const auto pair = parsePair(content);
+			provider->insertPair(pair);
 			*response << HTTPCREATED << "\r\n"
+					  << "Content-Type: application/json\r\n"
 					  << "Content-Length: " << content.length()
 					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
-			*response << e.what();
+			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
+					  << e.what()
+					  << "\r\n\r\n";
 		}
 	};
 
@@ -78,14 +96,18 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
-			const std::string pairs = provider->getPairs();
+			const std::string serializedPairs = provider->getPairs();
 			*response << HTTPOK << "\r\n"
-					  << "{\"pairs\":" << pairs << "}"
+					  << "Content-Type: application/json\r\n"
+					  << "Content-Length: " << serializedPairs.size() << "\r\n"
+					  << "{\"pairs\":" << serializedPairs << "}"
 					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
-			*response << e.what();
+			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
+					  << e.what()
+					  << "\r\n\r\n";
 		}
 	};
 
@@ -93,27 +115,34 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
-			const std::string filter = request->path_match[2];
+			const std::string& filter = request->path_match[2];
 			const size_t delimiter = filter.find('-');
-			const std::string pair = provider->getPair(pair.substr(0, delimiter), pair.substr(delimiter + 1));
+			const std::string serializedPair = provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1));
 			*response << HTTPOK << "\r\n"
-					  << "{\"pair\":" << pair << "}"
+					  << "Content-Type: application/json\r\n"
+					  << "Content-Length: " << serializedPair.size() << "\r\n"
+					  << "{\"pair\":" << serializedPair << "}"
 					  << "\r\n\r\n";
 		}
 		catch(const HttpException& e)
 		{
-			*response << e.what();
+			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
+					  << e.what()
+					  << "\r\n\r\n";
 		}
 	};
 }
 
-int main()
+int main(int /*argc*/, char **argv)
 {
 	try
 	{
-		std::cout << "Parsing config.ini..." << std::endl;
+		const auto execPath = std::string(argv[0]);
+		const auto execPathNoFilename = execPath.substr(0, execPath.size() - strlen(executableName));
+		const auto configPath = execPath.substr(0, execPath.size() - 6) + "config.ini";
+		std::cout << "Parsing " << configPath << "..." << std::endl;
 
-		ApiServer::Options options("config.ini");
+		ApiServer::Options options(configPath);
 
 		std::cout << "Done." << std::endl;
 		std::cout << "Server is running on port " << options.getPort() << "..." << std::endl;
@@ -124,7 +153,8 @@ int main()
 									 						  options.getMySqlPassword(),
 															  options.getMySqlDatabase());
 
-		HttpsServer server(options.getCertificatePath(), options.getPrivateKeyPath());
+		HttpsServer server(execPathNoFilename + options.getCertificatePath(),
+						   execPathNoFilename + options.getPrivateKeyPath());
 
 		configure(server, options);
 		addResources(server, provider);

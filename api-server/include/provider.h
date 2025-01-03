@@ -8,6 +8,12 @@ namespace sql
     class Connection;
 }
 
+namespace Utils
+{
+    class User;
+    class Pair;
+}
+
 namespace ApiServer
 {
     class Provider
@@ -33,8 +39,8 @@ namespace ApiServer
                           const std::string& password,
                           const std::string& database);
 
-        void insertUser(const std::string& content);
-        void insertPair(const std::string& content);
+        void insertUser(const Utils::User& user);
+        void insertPair(const Utils::Pair& pair);
         std::string getUsers();
         std::string getPairs();
         std::string getPair(const std::string& origin, const std::string& destination);

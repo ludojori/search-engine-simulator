@@ -7,6 +7,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include "server-exceptions.h"
+
 namespace Utils
 {
     enum class PairField
@@ -66,13 +68,14 @@ namespace Utils
             }
             catch(const std::exception& e)
             {
-                std::cerr << "An error occured while serializing a pair: " << e.what() << '\n';
-                return std::string();
+                const std::string errorMessage = "An error occured while serializing a pair: " + std::string(e.what());
+                std::cerr << errorMessage << '\n';
+                throw std::runtime_error(errorMessage);
             }
         }
     };
 
-    Pair parsePair(const std::string& serializedPair)
+    static Pair parsePair(const std::string& serializedPair)
     {
         try
         {
@@ -93,8 +96,9 @@ namespace Utils
         }
         catch(const std::exception& e)
         {
-            std::cerr << "An error occured while deserializing a pair: " << e.what() << '\n';
-            return Pair();
+            const std::string errorMessage = "An error occured while deserializing a pair: " + std::string(e.what());
+            std::cerr << errorMessage << '\n';
+            throw HttpBadRequest(errorMessage);
         }
     }
 }

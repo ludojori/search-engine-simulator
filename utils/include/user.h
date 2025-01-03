@@ -6,6 +6,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include "server-exceptions.h"
+
 namespace Utils
 {
     enum class UserType
@@ -48,13 +50,14 @@ namespace Utils
             }
             catch(const std::exception& e)
             {
-                std::cerr << "An error occured while serializing a pair: " << e.what() << '\n';
-                return std::string();
+                const std::string errorMessage = "An error occured while serializing a user: " + std::string(e.what());
+                std::cerr << errorMessage << '\n';
+                throw std::runtime_error(errorMessage);
             }
         }
     };
 
-    User parseUser(const std::string& serializedUser)
+    static User parseUser(const std::string& serializedUser)
     {
         try
         {
@@ -71,8 +74,9 @@ namespace Utils
         }
         catch(const std::exception& e)
         {
-            std::cerr << "An error occured while deserializing a user: " << e.what() << '\n';
-            return User();
+            const std::string errorMessage = "An error occured while deserializing a user: " + std::string(e.what());
+            std::cerr << errorMessage << '\n';
+            throw HttpBadRequest(errorMessage);
         }
     }
 }
