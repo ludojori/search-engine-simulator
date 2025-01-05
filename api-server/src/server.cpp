@@ -7,12 +7,29 @@
 #include "user.h"
 #include "pair.h"
 #include "server-exceptions.h"
-#include <filesystem>
 
 using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
 
 static const char* executableName = "server";
+
+/**
+ * A helper function for converting custom exception values to library error codes.
+ */
+SimpleWeb::StatusCode extractErrorCode(const HttpException& e)
+{
+	using namespace SimpleWeb;
+
+	switch(e.errorCode())
+	{
+		case 400: 	return StatusCode::client_error_bad_request;
+		case 401: 	return StatusCode::client_error_unauthorized;
+		case 403: 	return StatusCode::client_error_forbidden;
+		case 404: 	return StatusCode::client_error_not_found;
+		case 409: 	return StatusCode::client_error_conflict;
+		default: 	return StatusCode::server_error_internal_server_error;
+	}
+}
 
 /**
  * Apply options to server settings prior to initialization.
@@ -33,23 +50,38 @@ void configure(HttpsServer& server, const ApiServer::Options& options)
  */
 void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> provider)
 {
+	server.default_resource["GET"] = [](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	{
+		try
+		{
+			auto contentType = request->header.find("Content-Type"); // NOTE: case-insensitive
+			if(contentType == request->header.end())
+			{
+				response->write(SimpleWeb::StatusCode::client_error_bad_request, "Missing Content-Type header. Expected 'application/json'.");
+				return;
+			}
+			response->write("This is the default resource.");
+		}
+		catch(const std::exception& e)
+		{
+			response->write(SimpleWeb::StatusCode::server_error_internal_server_error, std::string("The server encountered an error."));
+		}
+	};
+
 	server.resource["^/config/users$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
 			const std::string content = request->content.string();
-			const auto user = parseUser(content);
+			const Utils::User user = parseUser(content);
+			
 			provider->insertUser(user);
-			*response << HTTPCREATED << "\r\n"
-					  << "Content-Type: application/json\r\n"
-					  << "Content-Length: " << content.length()
-					  << "\r\n\r\n";
+
+			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
 		catch(const HttpException& e)
 		{
-			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
-					  << e.what()
-					  << "\r\n\r\n";
+			response->write(extractErrorCode(e), e.what());
 		}
 	};
 
@@ -57,18 +89,13 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
-			const auto responseStr = std::string("{\"users\":") + provider->getUsers() + "}";
-			*response << HTTPOK << "\r\n"
-					  << "Content-Type: application/json\r\n"
-					  << "Content-Length: " << responseStr.size() << "\r\n"
-					  << responseStr
-					  << "\r\n\r\n";
+			const std::string responseStr = std::string("{\"users\":") + provider->getUsers() + "}";
+
+			response->write(responseStr);
 		}
 		catch(const HttpException& e)
 		{
-			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
-					  << e.what()
-					  << "\r\n\r\n";
+			response->write(extractErrorCode(e), e.what());
 		}
 	};
 
@@ -77,18 +104,15 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 		try
 		{
 			const std::string content = request->content.string();
-			const auto pair = parsePair(content);
+			const Utils::Pair pair = parsePair(content);
+
 			provider->insertPair(pair);
-			*response << HTTPCREATED << "\r\n"
-					  << "Content-Type: application/json\r\n"
-					  << "Content-Length: " << content.length()
-					  << "\r\n\r\n";
+
+			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
 		catch(const HttpException& e)
 		{
-			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
-					  << e.what()
-					  << "\r\n\r\n";
+			response->write(extractErrorCode(e), e.what());
 		}
 	};
 
@@ -97,17 +121,12 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 		try
 		{
 			const std::string serializedPairs = provider->getPairs();
-			*response << HTTPOK << "\r\n"
-					  << "Content-Type: application/json\r\n"
-					  << "Content-Length: " << serializedPairs.size() << "\r\n"
-					  << "{\"pairs\":" << serializedPairs << "}"
-					  << "\r\n\r\n";
+
+			response->write(serializedPairs);
 		}
 		catch(const HttpException& e)
 		{
-			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
-					  << e.what()
-					  << "\r\n\r\n";
+			response->write(extractErrorCode(e), e.what());
 		}
 	};
 
@@ -117,18 +136,14 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 		{
 			const std::string& filter = request->path_match[2];
 			const size_t delimiter = filter.find('-');
+
 			const std::string serializedPair = provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1));
-			*response << HTTPOK << "\r\n"
-					  << "Content-Type: application/json\r\n"
-					  << "Content-Length: " << serializedPair.size() << "\r\n"
-					  << "{\"pair\":" << serializedPair << "}"
-					  << "\r\n\r\n";
+
+			response->write(serializedPair);
 		}
 		catch(const HttpException& e)
 		{
-			*response << "Content-Length: " << strlen(e.what()) << "\r\n"
-					  << e.what()
-					  << "\r\n\r\n";
+			response->write(extractErrorCode(e), e.what());
 		}
 	};
 }
@@ -137,9 +152,9 @@ int main(int /*argc*/, char **argv)
 {
 	try
 	{
-		const auto execPath = std::string(argv[0]);
-		const auto execPathNoFilename = execPath.substr(0, execPath.size() - strlen(executableName));
-		const auto configPath = execPath.substr(0, execPath.size() - 6) + "config.ini";
+		const auto execPathWithFilename = std::string(argv[0]);
+		const auto execPath = execPathWithFilename.substr(0, execPathWithFilename.size() - strlen(executableName));
+		const auto configPath = execPathWithFilename.substr(0, execPathWithFilename.size() - 6) + "config.ini";
 		std::cout << "Parsing " << configPath << "..." << std::endl;
 
 		ApiServer::Options options(configPath);
@@ -153,8 +168,7 @@ int main(int /*argc*/, char **argv)
 									 						  options.getMySqlPassword(),
 															  options.getMySqlDatabase());
 
-		HttpsServer server(execPathNoFilename + options.getCertificatePath(),
-						   execPathNoFilename + options.getPrivateKeyPath());
+		HttpsServer server(execPath + options.getCertificatePath(), execPath + options.getPrivateKeyPath());
 
 		configure(server, options);
 		addResources(server, provider);

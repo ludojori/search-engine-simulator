@@ -4,31 +4,12 @@
 
 namespace Utils
 {
-    static const std::string HTTPOK = "HTTP/1.1 200 OK";
-    static const std::string HTTPCREATED = "HTTP/1.1 201 Created";
-
-    class HttpException : public std::exception
+    class HttpException : public std::runtime_error
     {
     public:
-        HttpException(const std::string& msg) : _msg(msg) {}
-        virtual const char* what() const noexcept override
-        {
-            const int msgLength = _msg.length();
-            const auto prefix = std::string("HTTP/1.1 ")
-                                .append(errorCode())
-                                .append("\r\nContent-Length: ")
-                                .append(std::to_string(msgLength))
-                                .append("\r\nContent-Type: application/json")
-                                .append("\r\n\r\n{ \"message\": \"");
-            _msg.insert(0, prefix);
-            _msg.append("\" }\r\n");
+        HttpException(const std::string& msg) : std::runtime_error(msg) {}
 
-            return _msg.c_str();
-        }
-
-    private:
-        virtual const char* errorCode() const noexcept = 0;
-        mutable std::string _msg;
+        virtual int errorCode() const noexcept = 0;
     };
 
     class HttpBadRequest : public HttpException
@@ -37,7 +18,7 @@ namespace Utils
         HttpBadRequest(const std::string& msg) : HttpException(msg) {}
 
     private:
-        const char* errorCode() const noexcept override { return "400 Bad Request"; }
+        int errorCode() const noexcept override { return 400; }
     };
 
     class HttpUnauthorized : public HttpException
@@ -46,7 +27,7 @@ namespace Utils
         HttpUnauthorized(const std::string& msg) : HttpException(msg) {}
 
     private:
-        const char* errorCode() const noexcept override { return "401 Unauthorized"; }
+        int errorCode() const noexcept override { return 401; }
     };
 
     class HttpForbidden : public HttpException
@@ -55,7 +36,7 @@ namespace Utils
         HttpForbidden(const std::string& msg) : HttpException(msg) {}
 
     private:
-        const char* errorCode() const noexcept override { return "403 Forbidden"; }
+        int errorCode() const noexcept override { return 403; }
     };
 
     class HttpNotFound : public HttpException
@@ -64,7 +45,7 @@ namespace Utils
         HttpNotFound(const std::string& msg) : HttpException(msg) {}
 
     private:
-        const char* errorCode() const noexcept override { return "404 Not Found"; }
+        int errorCode() const noexcept override { return 404; }
     };
 
     class HttpStateConflict : public HttpException
@@ -72,7 +53,7 @@ namespace Utils
         HttpStateConflict(const std::string& msg) : HttpException(msg) {}
 
     private:
-        const char* errorCode() const noexcept override { return "409 State Conflict"; }
+        int errorCode() const noexcept override { return 409; }
     };
 
     class HttpInternalServerError : public HttpException
@@ -81,6 +62,6 @@ namespace Utils
         HttpInternalServerError(const std::string& msg) : HttpException(msg) {}
 
     private:
-        const char* errorCode() const noexcept override { return "500 Internal Server Error"; }
+        int errorCode() const noexcept override { return 500; }
     };
 }
