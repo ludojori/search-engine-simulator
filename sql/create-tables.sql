@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS
         password VARCHAR(255) NOT NULL,
         type_id INT NOT NULL,
         PRIMARY KEY (id),
+        FOREIGN KEY (type_id) REFERENCES user_types(id),
         UNIQUE (name)
     );
 
@@ -48,3 +49,15 @@ VALUES
 (0, "Internal"),
 (1, "External"),
 (2, "Manager");
+
+CREATE TABLE IF NOT EXISTS
+    flights (
+        id INT NOT NULL AUTO_INCREMENT,
+        pair_id INT NOT NULL,
+        departure DATETIME NOT NULL,
+        arrival DATETIME NOT NULL,
+        price DECIMAL(10, 2) NOT NULL,
+        PRIMARY KEY (id),
+        FOREIGN KEY (pair_id) REFERENCES pairs(id)
+    );
+    

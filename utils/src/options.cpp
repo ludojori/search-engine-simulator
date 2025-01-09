@@ -1,13 +1,12 @@
 #include "options.h"
-#include <limits>
 
-namespace ApiServer
+namespace Utils
 {
     Options::Options(const std::string& pathToConfig)
     {
         _op.add<popl::Value<std::string>, popl::Attribute::required>("", "global.host", "The server host IP address", "127.0.0.1");
-        _op.add<popl::Value<int>, popl::Attribute::required>("p", "global.port", "The server port number", 8080);
-        _op.add<popl::Value<unsigned int>, popl::Attribute::optional>("", "global.max_request_streambuf_size", "", 0);
+        _op.add<popl::Value<int>, popl::Attribute::required>("p", "global.port", "The server port number");
+        _op.add<popl::Value<unsigned int>, popl::Attribute::optional>("", "global.max_request_streambuf_size", "", 1000);
         _op.add<popl::Value<unsigned int>, popl::Attribute::optional>("", "global.thread_pool_size", "", 1);
         _op.add<popl::Value<unsigned int>, popl::Attribute::optional>("", "global.timeout_content", "", 0);
         _op.add<popl::Value<unsigned int>, popl::Attribute::optional>("", "global.timeout_request", "", 0);
@@ -26,32 +25,32 @@ namespace ApiServer
 
     std::string Options::getHost() const
     {
-        return _op.get_option<popl::Value<std::string>>("global.host")->value_or("127.0.0.1");
+        return _op.get_option<popl::Value<std::string>>("global.host")->value();
     }
 
     int Options::getPort() const
     {
-        return _op.get_option<popl::Value<int>>("global.port")->value_or(443);
+        return _op.get_option<popl::Value<int>>("global.port")->value();
     }
 
     unsigned int Options::getMaxRequestStreambufSize() const
     {
-        return _op.get_option<popl::Value<unsigned int>>("global.max_request_streambuf_size")->value_or(std::numeric_limits<unsigned int>::max());
+        return _op.get_option<popl::Value<unsigned int>>("global.max_request_streambuf_size")->value();
     }
 
     unsigned int Options::getThreadPoolSize() const
     {
-        return _op.get_option<popl::Value<unsigned int>>("global.thread_pool_size")->value_or(1);
+        return _op.get_option<popl::Value<unsigned int>>("global.thread_pool_size")->value();
     }
 
     unsigned int Options::getTimeoutContent() const
     {
-        return _op.get_option<popl::Value<unsigned int>>("global.timeout_content")->value_or(300);
+        return _op.get_option<popl::Value<unsigned int>>("global.timeout_content")->value();
     }
 
     unsigned int Options::getTimeoutRequest() const
     {
-        return _op.get_option<popl::Value<unsigned int>>("global.timeout_request")->value_or(5);
+        return _op.get_option<popl::Value<unsigned int>>("global.timeout_request")->value();
     }
 
     std::string Options::getCertificatePath() const

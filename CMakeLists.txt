@@ -49,8 +49,8 @@ include_directories(
 # Include API server
 include(cmake/api-server.cmake)
 
-# Include Cache Engine
-include(cmake/c-engine.cmake)
+# Include Cache Server
+include(cmake/cache-server.cmake)
 
-# Include Real-Time Engine
-include(cmake/rt-engine.cmake)
+# Include Real-Time Server
+include(cmake/realtime-server.cmake)

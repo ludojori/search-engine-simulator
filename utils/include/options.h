@@ -2,7 +2,7 @@
 
 #include "popl.hpp"
 
-namespace ApiServer
+namespace Utils
 {
     class Options
     {

@@ -3,7 +3,7 @@
 
 #include "server_https.hpp"
 #include "options.h"
-#include "provider.h"
+#include "config-provider.h"
 #include "user.h"
 #include "pair.h"
 #include "server-exceptions.h"
@@ -32,9 +32,21 @@ SimpleWeb::StatusCode extractErrorCode(const HttpException& e)
 }
 
 /**
+ * Throws in case of an error.
+ */
+void verifyHeaders(const SimpleWeb::CaseInsensitiveMultimap& headers)
+{
+	auto contentType = headers.find("Content-Type");
+	if(contentType == headers.end())
+	{
+		throw HttpBadRequest("Missing Content-Type header. Expected 'application/json'.");
+	}
+}
+
+/**
  * Apply options to server settings prior to initialization.
  */
-void configure(HttpsServer& server, const ApiServer::Options& options)
+void configure(HttpsServer& server, const Utils::Options& options)
 {
 	server.config.address = options.getHost();
 	server.config.port = options.getPort();
@@ -46,20 +58,15 @@ void configure(HttpsServer& server, const ApiServer::Options& options)
 }
 
 /**
- * Defines server endpoints and behavior.
+ * Define server endpoints and behavior.
  */
-void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> provider)
+void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider> provider)
 {
 	server.default_resource["GET"] = [](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
-			auto contentType = request->header.find("Content-Type"); // NOTE: case-insensitive
-			if(contentType == request->header.end())
-			{
-				response->write(SimpleWeb::StatusCode::client_error_bad_request, "Missing Content-Type header. Expected 'application/json'.");
-				return;
-			}
+			verifyHeaders(request->header);
 			response->write("This is the default resource.");
 		}
 		catch(const std::exception& e)
@@ -72,11 +79,12 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
+			verifyHeaders(request->header);
+
 			const std::string content = request->content.string();
 			const Utils::User user = parseUser(content);
 			
 			provider->insertUser(user);
-
 			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
 		catch(const HttpException& e)
@@ -89,9 +97,8 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
-			const std::string responseStr = std::string("{\"users\":") + provider->getUsers() + "}";
-
-			response->write(responseStr);
+			verifyHeaders(request->header);
+			response->write("{\"users\":" + provider->getUsers() + "}");
 		}
 		catch(const HttpException& e)
 		{
@@ -103,11 +110,12 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
+			verifyHeaders(request->header);
+
 			const std::string content = request->content.string();
 			const Utils::Pair pair = parsePair(content);
 
 			provider->insertPair(pair);
-
 			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
 		catch(const HttpException& e)
@@ -120,9 +128,8 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
-			const std::string serializedPairs = provider->getPairs();
-
-			response->write(serializedPairs);
+			verifyHeaders(request->header);
+			response->write(provider->getPairs());
 		}
 		catch(const HttpException& e)
 		{
@@ -134,12 +141,12 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::Provider> prov
 	{
 		try
 		{
+			verifyHeaders(request->header);
+
 			const std::string& filter = request->path_match[2];
 			const size_t delimiter = filter.find('-');
 
-			const std::string serializedPair = provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1));
-
-			response->write(serializedPair);
+			response->write(provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1)));
 		}
 		catch(const HttpException& e)
 		{
@@ -155,18 +162,19 @@ int main(int /*argc*/, char **argv)
 		const auto execPathWithFilename = std::string(argv[0]);
 		const auto execPath = execPathWithFilename.substr(0, execPathWithFilename.size() - strlen(executableName));
 		const auto configPath = execPathWithFilename.substr(0, execPathWithFilename.size() - 6) + "config.ini";
+
 		std::cout << "Parsing " << configPath << "..." << std::endl;
 
-		ApiServer::Options options(configPath);
+		Utils::Options options(configPath);
 
 		std::cout << "Done." << std::endl;
 		std::cout << "Server is running on port " << options.getPort() << "..." << std::endl;
 
-		auto provider = std::make_shared<ApiServer::Provider>(options.getMySqlHost(),
-									 						  options.getMySqlPort(),
-									 						  options.getMySqlUsername(),
-									 						  options.getMySqlPassword(),
-															  options.getMySqlDatabase());
+		auto provider = std::make_shared<ApiServer::ConfigProvider>(options.getMySqlHost(),
+									 						  		options.getMySqlPort(),
+									 						  		options.getMySqlUsername(),
+									 						  		options.getMySqlPassword(),
+															  		options.getMySqlDatabase());
 
 		HttpsServer server(execPath + options.getCertificatePath(), execPath + options.getPrivateKeyPath());
 
@@ -180,6 +188,8 @@ int main(int /*argc*/, char **argv)
 		 * DDoS mitigation: residential proxy, WAF, Load Balancer
 		 * Sql Injection mitigation: user roles, request schemas, sql driver security
 		 */
+
+		return 0;
 	}
 	catch(const popl::invalid_option& e)
 	{
@@ -191,6 +201,4 @@ int main(int /*argc*/, char **argv)
 		std::cerr << "Fatal error: " << e.what() << '\n';
 		return 2;
 	}
-	
-	return 0;
 }

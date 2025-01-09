@@ -4,8 +4,9 @@ include_directories(
 
 add_executable(apiserver
     api-server/src/server.cpp
-    api-server/src/options.cpp
-    api-server/src/provider.cpp
+    api-server/src/config-provider.cpp
+    utils/src/options.cpp
+    utils/src/mysql-provider.cpp
 )
 
 set_target_properties(apiserver
