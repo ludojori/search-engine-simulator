@@ -145,7 +145,7 @@ namespace ApiServer
         {      
             auto stmt = createStatement();
             auto result = Utils::PointerWrapper(
-                stmt->executeQuery("SELECT * FROM pairs WHERE origin=" + origin + " AND destination=" + destination)
+                stmt->executeQuery("SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'")
             );
 
             std::string resultStr = "";

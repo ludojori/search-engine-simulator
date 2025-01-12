@@ -1,6 +1,13 @@
 #include <iostream>
 #include <memory>
 
+#include <boost/json/src.hpp>
+#include <valijson/adapters/boost_json_adapter.hpp>
+#include <valijson/schema.hpp>
+#include <valijson/schema_parser.hpp>
+#include <valijson/validator.hpp>
+#include <valijson/validation_results.hpp>
+
 #include "server_https.hpp"
 #include "options.h"
 #include "config-provider.h"
@@ -12,6 +19,86 @@ using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
 
 static const char* executableName = "server";
+
+// Function to read a file into a string
+std::string loadFileToString(const std::string& filePath)
+{
+    std::ifstream fileStream(filePath);
+    if (!fileStream.is_open())
+	{
+        throw std::runtime_error("Could not open file: " + filePath);
+    }
+
+    std::stringstream buffer;
+    buffer << fileStream.rdbuf();
+
+    return buffer.str();
+}
+
+void validateJson(const std::string& schemaJson, const std::string& targetJson)
+{
+	boost::system::error_code ec;
+	auto schemaDoc = boost::json::parse(schemaJson, ec);
+	if (ec)
+	{
+		throw HttpInternalServerError("Error parsing schema json: " + ec.message());
+	}
+
+	auto obj = schemaDoc.as_object();
+	auto iter = obj.find("$schema");
+	if (iter == obj.cend())
+	{
+		throw HttpInternalServerError("Error finding key $schema");
+	}
+
+	iter = obj.find("$ref");
+	if (iter != obj.cend())
+	{
+		throw HttpInternalServerError("Invalid iterator for non-existent key $ref");
+	}
+
+	valijson::Schema schema;
+    valijson::SchemaParser schemaParser;
+
+	valijson::adapters::BoostJsonAdapter schemaAdapter(schemaDoc);
+    std::cout << "Populating schema..." << std::endl;
+    schemaParser.populateSchema(schemaAdapter, schema);
+
+	auto targetDoc = boost::json::parse(targetJson, ec);
+	if (ec)
+	{
+		throw HttpInternalServerError("Error parsing target json: " + ec.message());
+	}
+
+	valijson::Validator validator;
+	valijson::ValidationResults results;
+	valijson::adapters::BoostJsonAdapter targetAdapter(targetDoc);
+	if (validator.validate(schema, targetAdapter, &results))
+	{
+		std::cout << "Validation succeeded." << std::endl;
+		return;
+	}
+
+	std::stringstream errorStream;
+	errorStream << "Validation failed with the following errors:" << std::endl;
+
+	valijson::ValidationResults::Error error;
+	unsigned int errorNum = 0;
+	while (results.popError(error))
+	{
+		errorStream << "#" << errorNum << std::endl;
+		errorStream << "  ";
+		for (const std::string& contextElement : error.context)
+		{
+			errorStream << contextElement << " ";
+		}
+		errorStream << std::endl;
+		errorStream << "    - " << error.description << std::endl;
+		++errorNum;
+	}
+
+	throw HttpBadRequest(errorStream.str());
+}
 
 /**
  * A helper function for converting custom exception values to library error codes.
@@ -60,7 +147,7 @@ void configure(HttpsServer& server, const Utils::Options& options)
 /**
  * Define server endpoints and behavior.
  */
-void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider> provider)
+void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider> provider, const std::string& pairSchemaJson)
 {
 	server.default_resource["GET"] = [](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
@@ -124,6 +211,24 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
+	server.resource["^/config/pairs-safe$"]["POST"] = [provider, pairSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	{
+		try
+		{
+			verifyHeaders(request->header);
+			const std::string content = request->content.string();
+			validateJson(pairSchemaJson, content);
+			const Utils::Pair pair = parsePair(content);
+
+			provider->insertPair(pair);
+			response->write(SimpleWeb::StatusCode::success_created, content);
+		}
+		catch(const HttpException& e)
+		{
+			response->write(extractErrorCode(e), e.what());
+		}
+	};
+
 	server.resource["^/config/pairs$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
@@ -168,7 +273,11 @@ int main(int /*argc*/, char **argv)
 		Utils::Options options(configPath);
 
 		std::cout << "Done." << std::endl;
-		std::cout << "Server is running on port " << options.getPort() << "..." << std::endl;
+		std::cout << "Reading JSON schemas..." << std::endl;
+
+		const std::string pairSchemaJson = loadFileToString(execPath + "../schemas/pair-schema.json");
+
+		std::cout << "Done." << std::endl;
 
 		auto provider = std::make_shared<ApiServer::ConfigProvider>(options.getMySqlHost(),
 									 						  		options.getMySqlPort(),
@@ -179,15 +288,23 @@ int main(int /*argc*/, char **argv)
 		HttpsServer server(execPath + options.getCertificatePath(), execPath + options.getPrivateKeyPath());
 
 		configure(server, options);
-		addResources(server, provider);
+		addResources(server, provider, pairSchemaJson);
 
-		server.start();
+
+		std::thread serverThread([&server]()
+		{
+			server.start();
+		});
+		
+		std::cout << "Server is running on port " << options.getPort() << "..." << std::endl;
 
 		// VV: service goal
 		/**
 		 * DDoS mitigation: residential proxy, WAF, Load Balancer
 		 * Sql Injection mitigation: user roles, request schemas, sql driver security
 		 */
+
+		serverThread.join();
 
 		return 0;
 	}

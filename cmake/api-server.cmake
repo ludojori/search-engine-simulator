@@ -17,10 +17,16 @@ set_target_properties(apiserver
 target_link_libraries(apiserver
     simple-web-server
     mysqlcppconn
+    ValiJSON::valijson
 )
 
 configure_file(
     api-server/config.ini
     ${CMAKE_BINARY_DIR}/api-server/bin/
     COPYONLY
+)
+
+file(
+    COPY ${CMAKE_SOURCE_DIR}/api-server/schemas/
+    DESTINATION ${CMAKE_BINARY_DIR}/api-server/schemas
 )
