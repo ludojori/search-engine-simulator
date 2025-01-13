@@ -17,7 +17,6 @@ namespace Utils
     public:
         HttpBadRequest(const std::string& msg) : HttpException(msg) {}
 
-    private:
         int errorCode() const noexcept override { return 400; }
     };
 
@@ -26,7 +25,6 @@ namespace Utils
     public:
         HttpUnauthorized(const std::string& msg) : HttpException(msg) {}
 
-    private:
         int errorCode() const noexcept override { return 401; }
     };
 
@@ -35,7 +33,6 @@ namespace Utils
     public:
         HttpForbidden(const std::string& msg) : HttpException(msg) {}
 
-    private:
         int errorCode() const noexcept override { return 403; }
     };
 
@@ -44,15 +41,14 @@ namespace Utils
     public:
         HttpNotFound(const std::string& msg) : HttpException(msg) {}
 
-    private:
         int errorCode() const noexcept override { return 404; }
     };
 
     class HttpStateConflict : public HttpException
     {
+    public:
         HttpStateConflict(const std::string& msg) : HttpException(msg) {}
 
-    private:
         int errorCode() const noexcept override { return 409; }
     };
 
@@ -61,7 +57,6 @@ namespace Utils
     public:
         HttpInternalServerError(const std::string& msg) : HttpException(msg) {}
 
-    private:
         int errorCode() const noexcept override { return 500; }
     };
 }

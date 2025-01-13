@@ -38,14 +38,14 @@ namespace ApiServer
 
     void ConfigProvider::insertPair(const Utils::Pair& pair)
     {
+        const std::string serializedPair = getPair(pair.origin, pair.destination);
+        if(!serializedPair.empty())
+        {
+            throw Utils::HttpStateConflict("Pair already exists.");
+        }
+
         try
         {
-            const std::string serializedPair = getPair(pair.origin, pair.destination);
-            if(!serializedPair.empty())
-            {
-                throw Utils::HttpBadRequest("Pair already exists.");
-            }
-
             auto stmt = prepareStatement(pairsRawStmt);
             stmt->setString(1, pair.origin);
             stmt->setString(2, pair.destination);
@@ -59,8 +59,7 @@ namespace ApiServer
         catch(const sql::SQLException& e)
         {
             throw Utils::HttpInternalServerError(e.what());
-        }
-        
+        }   
     }
 
     std::string ConfigProvider::getUsers()
@@ -141,14 +140,14 @@ namespace ApiServer
 
     std::string ConfigProvider::getPair(const std::string& origin, const std::string& destination)
     {
+        std::string resultStr = "";
+
         try
         {      
             auto stmt = createStatement();
             auto result = Utils::PointerWrapper(
                 stmt->executeQuery("SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'")
             );
-
-            std::string resultStr = "";
 
             if(result->next())
             {
@@ -164,12 +163,15 @@ namespace ApiServer
 
                 resultStr = pair.serialize();
             }
-
-            return resultStr;
         }
         catch(const sql::SQLException& e)
         {
             throw Utils::HttpInternalServerError(e.what());
+        }
+
+        if(resultStr.empty())
+        {
+            throw Utils::HttpNotFound("Pair not found.");
         }
     }
 }
