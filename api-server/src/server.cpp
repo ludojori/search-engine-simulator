@@ -248,7 +248,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		{
 			verifyHeaders(request->header);
 
-			const std::string& filter = request->path_match[2];
+			const std::string& path = request->path_match[0];
+			const std::string prefix = "/config/pairs/";
+			const std::string filter = path.substr(prefix.size());
 			const size_t delimiter = filter.find('-');
 
 			response->write(provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1)));
