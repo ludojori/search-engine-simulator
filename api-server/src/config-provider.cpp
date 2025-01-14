@@ -173,5 +173,7 @@ namespace ApiServer
         {
             throw Utils::HttpNotFound("Pair not found.");
         }
+
+        return resultStr;
     }
 }
