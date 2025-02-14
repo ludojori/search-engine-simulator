@@ -176,4 +176,42 @@ namespace ApiServer
 
         return resultStr;
     }
+
+    std::string ConfigProvider::getPairUnsafe(const std::string& origin, const std::string& destination)
+    {
+        const std::string queryStr = "SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'";
+        std::string resultStr = "";
+
+        try
+        {      
+            auto stmt = createStatement();
+            auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+
+            while(result->next())
+            {
+                Utils::Pair pair {
+                    .origin = result->getString("origin"),
+                    .destination = result->getString("destination"),
+                    .isOneWay = result->getBoolean("is_one_way"),
+                    .isRoundtrip = result->getBoolean("is_roundtrip"),
+                    .fareCarrier = result->getString("f_carrier"),
+                    .marketingCarrier = result->getString("m_carrier"),
+                    .operatingCarrier = result->getString("o_carrier")
+                };
+
+                resultStr += pair.serialize();
+            }
+        }
+        catch(const sql::SQLException& e)
+        {
+            throw Utils::HttpInternalServerError(e.what());
+        }
+
+        if(resultStr.empty())
+        {
+            throw Utils::HttpNotFound("Pair not found.");
+        }
+
+        return resultStr;
+    }
 }

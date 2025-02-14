@@ -1,5 +1,7 @@
 #include <iostream>
 #include <memory>
+#include <sstream>
+#include <iomanip>
 
 #include <boost/json/src.hpp>
 #include <valijson/adapters/boost_json_adapter.hpp>
@@ -19,6 +21,38 @@ using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
 
 static const char* executableName = "server";
+
+std::string decodeHexSymbols(const std::string &input)
+{
+    std::ostringstream decoded;
+    const size_t length = input.length();
+
+    for (size_t i = 0; i < length; i++)
+	{
+        if (input[i] == '%' && i + 2 < length)
+		{
+            // Extract next two characters as hex digits
+            std::string hexValue = input.substr(i + 1, 2);
+            int charCode;
+            
+            // Convert hex string to integer
+            std::istringstream(hexValue) >> std::hex >> charCode;
+            
+            // Append the decoded character
+            decoded << static_cast<char>(charCode);
+            
+            // Skip the processed hex digits
+            i += 2;  
+        }
+		else
+		{
+            // Append normal characters as is
+            decoded << input[i];
+        }
+    }
+
+    return decoded.str();
+}
 
 // Function to read a file into a string
 std::string loadFileToString(const std::string& filePath)
@@ -153,8 +187,10 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	{
 		try
 		{
-			verifyHeaders(request->header);
-			response->write("This is the default resource.");
+			const char* helpMessage = "This is the default resource.\n"
+									  "Try /config/users-safe, /config/users, /config/pairs-safe0, /config/pairs-safe1, /config/pairs, or /config/pairs/{origin}-{destination}.";
+			SimpleWeb::CaseInsensitiveMultimap headers = { { "Content-Type", "text/plain" } };
+			response->write(helpMessage, headers);
 		}
 		catch(const std::exception& e)
 		{
@@ -162,7 +198,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/users$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/users-safe$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
@@ -184,7 +220,6 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	{
 		try
 		{
-			verifyHeaders(request->header);
 			response->write("{\"users\":" + provider->getUsers() + "}");
 		}
 		catch(const HttpException& e)
@@ -193,7 +228,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/pairs$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/pairs-safe0$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
@@ -211,7 +246,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/pairs-safe$"]["POST"] = [provider, pairSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/pairs-safe1$"]["POST"] = [provider, pairSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
@@ -233,7 +268,6 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	{
 		try
 		{
-			verifyHeaders(request->header);
 			response->write(provider->getPairs());
 		}
 		catch(const HttpException& e)
@@ -242,18 +276,38 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/pairs/[A-Z]{3}-[A-Z]{3}$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/pairs-safe/[A-Z]{3}-[A-Z]{3}$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
-			verifyHeaders(request->header);
-
 			const std::string& path = request->path_match[0];
-			const std::string prefix = "/config/pairs/";
+			const std::string prefix = "/config/pairs-safe/";
 			const std::string filter = path.substr(prefix.size());
 			const size_t delimiter = filter.find('-');
 
 			response->write(provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1)));
+		}
+		catch(const HttpException& e)
+		{
+			response->write(extractErrorCode(e), e.what());
+		}
+	};
+
+	server.resource["^/config/pairs/unsafe/.*$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	{
+		/**
+		 * Experiment with the following curl command:
+		 * curl -v --cacert server.crt -H "Content-Type: application/json"  'https://localhost:8080/config/pairs/unsafe/SOF-LON%27%20OR%20%27%27=%27'
+		 */
+		try
+		{
+			const std::string& path = request->path_match[0];
+			const std::string parsedPath = decodeHexSymbols(path);
+			const std::string prefix = "/config/pairs/unsafe/";
+			const std::string filter = parsedPath.substr(prefix.size());
+			const size_t delimiter = filter.find('-');
+
+			response->write(provider->getPairUnsafe(filter.substr(0, delimiter), filter.substr(delimiter + 1)));
 		}
 		catch(const HttpException& e)
 		{

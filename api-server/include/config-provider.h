@@ -24,6 +24,7 @@ namespace ApiServer
         std::string getUsers();
         std::string getPairs();
         std::string getPair(const std::string& origin, const std::string& destination);
+        std::string getPairUnsafe(const std::string& origin, const std::string& destination);
 
     private:
         void authorizeOperation(Utils::OperationType opType);
