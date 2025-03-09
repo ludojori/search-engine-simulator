@@ -17,9 +17,7 @@ namespace Utils
         Destination,
         IsOneWay,
         IsRoundtrip,
-        FareCarrier,
-        MarketingCarrier,
-        OperatingCarrier
+        FareCarrier
     };
 
     static const std::unordered_map<PairField, std::string> pairFields = {
@@ -27,9 +25,7 @@ namespace Utils
         { PairField::Destination,       "destination" },
         { PairField::IsOneWay,          "isOneWay" },
         { PairField::IsRoundtrip,       "isRoundtrip" },
-        { PairField::FareCarrier,       "fareCarrier" },
-        { PairField::MarketingCarrier,  "marketingCarrier" },
-        { PairField::OperatingCarrier,  "operatingCarrier" }
+        { PairField::FareCarrier,       "fareCarrier" }
     };
 
     inline std::string getPairFieldName(const PairField val)
@@ -44,8 +40,6 @@ namespace Utils
         bool isOneWay;
         bool isRoundtrip;
         std::string fareCarrier;
-        std::string marketingCarrier;
-        std::string operatingCarrier;
 
         std::string serialize() const
         {
@@ -59,8 +53,6 @@ namespace Utils
                 ptree.put(getPairFieldName(PairField::IsOneWay), isOneWay);
                 ptree.put(getPairFieldName(PairField::IsRoundtrip), isRoundtrip);
                 ptree.put(getPairFieldName(PairField::FareCarrier), fareCarrier);
-                ptree.put(getPairFieldName(PairField::MarketingCarrier), marketingCarrier);
-                ptree.put(getPairFieldName(PairField::OperatingCarrier), operatingCarrier);
 
                 boost::property_tree::write_json(buf, ptree, false);
 
@@ -89,8 +81,6 @@ namespace Utils
             pair.isOneWay = ptree.get<bool>(getPairFieldName(PairField::IsOneWay));
             pair.isRoundtrip = ptree.get<bool>(getPairFieldName(PairField::IsRoundtrip));
             pair.fareCarrier = ptree.get<std::string>(getPairFieldName(PairField::FareCarrier));
-            pair.marketingCarrier = ptree.get<std::string>(getPairFieldName(PairField::MarketingCarrier));
-            pair.operatingCarrier = ptree.get<std::string>(getPairFieldName(PairField::OperatingCarrier));
 
             return pair;
         }

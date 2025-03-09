@@ -4,6 +4,7 @@
 #include <iomanip>
 
 #include <boost/json/src.hpp>
+
 #include <valijson/adapters/boost_json_adapter.hpp>
 #include <valijson/schema.hpp>
 #include <valijson/schema_parser.hpp>
@@ -75,7 +76,7 @@ void validateJson(const std::string& schemaJson, const std::string& targetJson)
 	auto schemaDoc = boost::json::parse(schemaJson, ec);
 	if (ec)
 	{
-		throw HttpInternalServerError("Error parsing schema json: " + ec.message());
+		throw HttpInternalServerError("Error parsing JSON schema: " + ec.message());
 	}
 
 	auto obj = schemaDoc.as_object();
@@ -101,7 +102,7 @@ void validateJson(const std::string& schemaJson, const std::string& targetJson)
 	auto targetDoc = boost::json::parse(targetJson, ec);
 	if (ec)
 	{
-		throw HttpInternalServerError("Error parsing target json: " + ec.message());
+		throw HttpInternalServerError("Error parsing JSON target: " + ec.message());
 	}
 
 	valijson::Validator validator;
@@ -114,20 +115,20 @@ void validateJson(const std::string& schemaJson, const std::string& targetJson)
 	}
 
 	std::stringstream errorStream;
-	errorStream << "Validation failed with the following errors:" << std::endl;
+	errorStream << "Validation failed with the following errors:\n";
 
 	valijson::ValidationResults::Error error;
 	unsigned int errorNum = 0;
 	while (results.popError(error))
 	{
-		errorStream << "#" << errorNum << std::endl;
+		errorStream << "#" << errorNum << "\n";
 		errorStream << "  ";
 		for (const std::string& contextElement : error.context)
 		{
 			errorStream << contextElement << " ";
 		}
 		errorStream << std::endl;
-		errorStream << "    - " << error.description << std::endl;
+		errorStream << "    - " << error.description << "\n";
 		++errorNum;
 	}
 
@@ -160,7 +161,12 @@ void verifyHeaders(const SimpleWeb::CaseInsensitiveMultimap& headers)
 	auto contentType = headers.find("Content-Type");
 	if(contentType == headers.end())
 	{
-		throw HttpBadRequest("Missing Content-Type header. Expected 'application/json'.");
+		throw HttpBadRequest("Missing Content-Type header.");
+	}
+
+	if(contentType->second != "application/json")
+	{
+		throw HttpBadRequest("Invalid Content-Type header.");
 	}
 }
 
@@ -276,12 +282,12 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/pairs-safe/[A-Z]{3}-[A-Z]{3}$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/pairs/safe/[A-Z]{3}-[A-Z]{3}$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
 			const std::string& path = request->path_match[0];
-			const std::string prefix = "/config/pairs-safe/";
+			const std::string prefix = "/config/pairs/safe/";
 			const std::string filter = path.substr(prefix.size());
 			const size_t delimiter = filter.find('-');
 
@@ -345,7 +351,6 @@ int main(int /*argc*/, char **argv)
 
 		configure(server, options);
 		addResources(server, provider, pairSchemaJson);
-
 
 		std::thread serverThread([&server]()
 		{

@@ -52,8 +52,6 @@ namespace ApiServer
             stmt->setBoolean(3, pair.isOneWay);
             stmt->setBoolean(4, pair.isRoundtrip);
             stmt->setString(5, pair.fareCarrier);
-            stmt->setString(6, pair.marketingCarrier);
-            stmt->setString(7, pair.operatingCarrier);
             stmt->execute();
         }
         catch(const sql::SQLException& e)
@@ -119,9 +117,7 @@ namespace ApiServer
                     .destination = result->getString("destination"),
                     .isOneWay = result->getBoolean("is_one_way"),
                     .isRoundtrip = result->getBoolean("is_roundtrip"),
-                    .fareCarrier = result->getString("f_carrier"),
-                    .marketingCarrier = result->getString("m_carrier"),
-                    .operatingCarrier = result->getString("o_carrier")
+                    .fareCarrier = result->getString("f_carrier")
                 };
 
                 const std::string serializedPair = pair.serialize();
@@ -156,9 +152,7 @@ namespace ApiServer
                     .destination = result->getString("destination"),
                     .isOneWay = result->getBoolean("is_one_way"),
                     .isRoundtrip = result->getBoolean("is_roundtrip"),
-                    .fareCarrier = result->getString("f_carrier"),
-                    .marketingCarrier = result->getString("m_carrier"),
-                    .operatingCarrier = result->getString("o_carrier")
+                    .fareCarrier = result->getString("f_carrier")
                 };
 
                 resultStr = pair.serialize();
@@ -194,9 +188,7 @@ namespace ApiServer
                     .destination = result->getString("destination"),
                     .isOneWay = result->getBoolean("is_one_way"),
                     .isRoundtrip = result->getBoolean("is_roundtrip"),
-                    .fareCarrier = result->getString("f_carrier"),
-                    .marketingCarrier = result->getString("m_carrier"),
-                    .operatingCarrier = result->getString("o_carrier")
+                    .fareCarrier = result->getString("f_carrier")
                 };
 
                 resultStr += pair.serialize();

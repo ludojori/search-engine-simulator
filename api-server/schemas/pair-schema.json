@@ -30,12 +30,6 @@
         },
         "fareCarrier": {
             "$ref": "#/definitions/carrierCode"
-        },
-        "marketingCarrier": {
-            "$ref": "#/definitions/carrierCode"
-        },
-        "operatingCarrier": {
-            "$ref": "#/definitions/carrierCode"
         }
     },
     "required": [
