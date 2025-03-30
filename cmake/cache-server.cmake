@@ -9,10 +9,14 @@ add_executable(cacheserver
     utils/src/mysql-provider.cpp
 )
 
+set(BIN_DIR ${CMAKE_BINARY_DIR}/cache-server/bin)
+
+file(MAKE_DIRECTORY ${BIN_DIR})
+
 set_target_properties(cacheserver
     PROPERTIES
     RUNTIME_OUTPUT_NAME server
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/cache-server/bin/)
+    RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
 
 target_link_libraries(cacheserver
     simple-web-server

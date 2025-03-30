@@ -45,25 +45,22 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/utils/external/popl/CMakeLists.txt")
     message(FATAL_ERROR "Missing CMakeLists.txt file for submodule popl!")
 endif()
 
-find_library(mysql++
-    mysqlcppconn
-    REQUIRED
-)
-
 set(valijson_BUILD_TESTS OFF CACHE BOOL "Don't build valijson tests.")
 
 add_subdirectory(utils/external/Simple-Web-Server EXCLUDE_FROM_ALL)
 add_subdirectory(utils/external/valijson EXCLUDE_FROM_ALL)
 add_subdirectory(utils/external/Catch2 EXCLUDE_FROM_ALL)
+add_subdirectory(utils/external/mysql-connector-cpp EXCLUDE_FROM_ALL)
 
 include_directories(
     utils/include
     utils/external/popl/include
     utils/external/valijson/include
+    utils/external/mysql-connector-cpp/include
 )
 
-# Include API server
-include(cmake/api-server.cmake)
+# Include Config server
+include(cmake/config-server.cmake)
 
 # Include Cache Server
 include(cmake/cache-server.cmake)
