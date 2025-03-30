@@ -3,74 +3,111 @@
 #include <thread>
 
 #include "server_http.hpp"
-#include "client_https.hpp"
-#include "popl.hpp"
+#include "options.h"
+#include "cache-provider.h"
+#include "server-exceptions.h"
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
-using HttpsClient = SimpleWeb::Client<SimpleWeb::HTTPS>;
 
 static const char* executableName = "server";
+
+/**
+ * A helper function for converting custom exception values to library error codes.
+ */
+SimpleWeb::StatusCode extractErrorCode(const Utils::HttpException& e)
+{
+	using namespace SimpleWeb;
+
+	switch(e.errorCode())
+	{
+		case 400: 	return StatusCode::client_error_bad_request;
+		case 401: 	return StatusCode::client_error_unauthorized;
+		case 403: 	return StatusCode::client_error_forbidden;
+		case 404: 	return StatusCode::client_error_not_found;
+		case 409: 	return StatusCode::client_error_conflict;
+		default: 	return StatusCode::server_error_internal_server_error;
+	}
+}
+
+void configure(HttpServer& server, const Utils::Options& options)
+{
+    server.config.address = options.getHost();
+    server.config.port = options.getPort();
+    server.config.reuse_address = false;
+    server.config.max_request_streambuf_size = options.getMaxRequestStreambufSize();
+    server.config.thread_pool_size = options.getThreadPoolSize();
+    server.config.timeout_content = options.getTimeoutContent();
+    server.config.timeout_request = options.getTimeoutRequest();
+}
+
+void addResources(HttpServer& server, std::shared_ptr<CacheServer::CacheProvider> provider)
+{
+    server.default_resource["GET"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    {
+        try
+        {
+            response->write("This is the default resource. Try: /flights?origin=origin&destination=destination\n");
+        }
+        catch(const std::exception& e)
+        {
+            response->write(SimpleWeb::StatusCode::server_error_internal_server_error, std::string("Unexpected error: ") + e.what());
+        }
+    };
+
+    server.resource["^/flights$"]["GET"] = [provider](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    {
+        try
+        {
+            const auto queriesMap = request->parse_query_string();
+
+            std::string origin = "";
+            std::string destination = "";
+
+            const auto originIt = queriesMap.find("origin");
+            if(originIt != queriesMap.end())
+            {
+                origin = originIt->second;
+            }
+
+            const auto destinationIt = queriesMap.find("destination");
+            if(destinationIt != queriesMap.end())
+            {
+                destination = destinationIt->second;
+            }
+
+            response->write(provider->getFlights(origin, destination));
+        }
+        catch(const Utils::HttpException& e)
+        {
+            response->write(extractErrorCode(e), e.what());
+        }
+    };
+}
 
 int main(int argc, char **argv)
 {
     try
     {
-        popl::OptionParser commandLineParser("Allowed options");
+        const auto execPathWithFilename = std::string(argv[0]);
+		const auto execPath = execPathWithFilename.substr(0, execPathWithFilename.size() - strlen(executableName));
+		const auto configPath = execPath + "config.ini";
 
-        commandLineParser.add<popl::Switch>("h", "help", "Print this help message");
-        commandLineParser.add<popl::Value<int>>("p", "port", "Port to listen on");
-        commandLineParser.add<popl::Value<std::string>>("c", "api-config", "Path to the configuration file of the API server");
-        commandLineParser.parse(argc, argv);        
+		std::cout << "Parsing " << configPath << "..." << std::endl;
 
-        if(commandLineParser.get_option<popl::Switch>("help")->is_set())
-        {
-            std::cout << commandLineParser.help() << std::endl;
-            return 0;
-        }
+        Utils::Options options(configPath);
 
-        std::string errorMessage;
+		std::cout << "Done." << std::endl;
 
-        auto portOption = commandLineParser.get_option<popl::Value<int>>("port");
-        auto apiConfigOption = commandLineParser.get_option<popl::Value<std::string>>("api-config");
-
-        if(portOption->is_set())
-        {
-            if(portOption->value() < 0 || portOption->value() > 65535)
-            {
-                errorMessage += "Invalid port number!\n";
-            }
-        }
-        else
-        {
-            errorMessage += "Port number not specified!\n";
-        }
-
-        if(apiConfigOption->is_set())
-        {
-            const auto pathToApiConfig = apiConfigOption->value();
-            std::ifstream configFile(pathToApiConfig);
-            if(!configFile.good())
-            {
-                errorMessage += "Invalid path to the configuration file!\n";
-            }
-        }
-        else
-        {
-            errorMessage += "Path to the configuration file not specified!\n";
-        }
-
-        if(!errorMessage.empty())
-        {
-            std::cerr << errorMessage << std::endl;
-            return 1;
-        }
+        auto provider = std::make_shared<CacheServer::CacheProvider>(options.getMySqlHost(),
+                                                                     options.getMySqlPort(),
+                                                                     options.getMySqlUsername(),
+                                                                     options.getMySqlPassword(),
+                                                                     options.getMySqlDatabase());
 
         HttpServer server;
-        server.config.port = portOption->value();
-        server.default_resource["GET"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
-        {
-            response->write("Hello, World!");
-        };
+
+        configure(server, options);
+        addResources(server, provider);
         
         std::thread serverThread([&server]()
         {
@@ -78,30 +115,6 @@ int main(int argc, char **argv)
         });
 
         std::cout << "Server started on port " << server.config.port << "..." << std::endl;
-
-        popl::OptionParser apiConfigParser;
-        apiConfigParser.add<popl::Value<std::string>>("h", "global.host", "Host of the API server");
-        apiConfigParser.add<popl::Value<int>>("p", "global.port", "Port of the API server");
-        apiConfigParser.parse(apiConfigOption->value());
-
-        const std::string configServerUri = apiConfigParser.get_option<popl::Value<std::string>>("global.host")->value() + ":"
-                                   + std::to_string(apiConfigParser.get_option<popl::Value<int>>("global.port")->value());
-
-        std::cout << "Connecting to API server at " << configServerUri << std::endl;
-
-        HttpsClient client(configServerUri, false);
-
-        while(true)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            std::cout << "Sending GET request to " << configServerUri << "..." << std::endl;
-            SimpleWeb::CaseInsensitiveMultimap header;
-            header.emplace("Content-Type", "application/json");
-            auto response = client.request("GET", "/config/users", "", header);
-            std::cout << "Response received!\n"
-                      << "Status Code: " << response->status_code << "\n"
-                      << "Content: " << response->content.string() << std::endl;
-        }
         
         serverThread.join();
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Usage: ./load_test.sh <URL> <REQUEST_RATE> <METHOD> [BODY_PATH]
-# Example: ./load_test.sh 192.168.1.100:8080/path/to/source 50 GET
-# Example: ./load_test.sh 192.168.1.100:8080/path/to/source 50 POST request_body.json
+# Usage: bash http-flood.sh <URL> <REQUEST_RATE> <METHOD> [BODY_PATH]
+# Example: bash http-flood.sh 192.168.1.100:8080/path/to/source 50 GET
+# Example: bash http-flood.sh 192.168.1.100:8080/path/to/source 50 POST request_body.json
 
 # Input Parameters
 URL="$1"

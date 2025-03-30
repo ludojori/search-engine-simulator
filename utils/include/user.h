@@ -52,7 +52,7 @@ namespace Utils
             {
                 const std::string errorMessage = "An error occured while serializing a user: " + std::string(e.what());
                 std::cerr << errorMessage << '\n';
-                throw std::runtime_error(errorMessage);
+                throw HttpBadRequest(errorMessage);
             }
         }
     };

@@ -13,13 +13,14 @@ namespace RealtimeServer
                                  const std::string& password,
                                  const std::string& database);
 
-        std::string getFlights();
-
-        void populateFlights();
-
+        void populateFlightsTable();
+        std::string getFlights(const std::string& origin, const std::string& destination);
+        
         ~FlightsProvider();
-
+        
     private:
+        double generateRandomPrice(double minPrice, double maxPrice);
+
         bool areFlightsPopulated = false;
     };
 }

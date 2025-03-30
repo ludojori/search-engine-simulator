@@ -15,7 +15,7 @@
 namespace ApiServer
 {
     static const std::string usersRawStmt = "INSERT INTO users (name, password, type_id) VALUES (?,?,?)";
-    static const std::string pairsRawStmt = "INSERT INTO pairs (origin, destination, is_one_way, is_roundtrip, f_carrier, m_carrier, o_carrier) VALUES (?,?,?,?,?,?,?)";
+    static const std::string pairsRawStmt = "INSERT INTO pairs (origin, destination, type, f_carrier) VALUES (?,?,?,?,?)";
 
     ConfigProvider::ConfigProvider(const std::string& dbHost, const int dbPort, const std::string& username, const std::string& password, const std::string& database) :
         Utils::MySqlProvider(dbHost, dbPort, username, password, database) {}
@@ -49,9 +49,8 @@ namespace ApiServer
             auto stmt = prepareStatement(pairsRawStmt);
             stmt->setString(1, pair.origin);
             stmt->setString(2, pair.destination);
-            stmt->setBoolean(3, pair.isOneWay);
-            stmt->setBoolean(4, pair.isRoundtrip);
-            stmt->setString(5, pair.fareCarrier);
+            stmt->setBoolean(3, pair.type);
+            stmt->setString(4, pair.fareCarrier);
             stmt->execute();
         }
         catch(const sql::SQLException& e)
@@ -115,8 +114,7 @@ namespace ApiServer
                 Utils::Pair pair {
                     .origin = result->getString("origin"),
                     .destination = result->getString("destination"),
-                    .isOneWay = result->getBoolean("is_one_way"),
-                    .isRoundtrip = result->getBoolean("is_roundtrip"),
+                    .type = result->getBoolean("type"),
                     .fareCarrier = result->getString("f_carrier")
                 };
 
@@ -150,8 +148,7 @@ namespace ApiServer
                 Utils::Pair pair {
                     .origin = result->getString("origin"),
                     .destination = result->getString("destination"),
-                    .isOneWay = result->getBoolean("is_one_way"),
-                    .isRoundtrip = result->getBoolean("is_roundtrip"),
+                    .type = result->getBoolean("type"),
                     .fareCarrier = result->getString("f_carrier")
                 };
 
@@ -186,8 +183,7 @@ namespace ApiServer
                 Utils::Pair pair {
                     .origin = result->getString("origin"),
                     .destination = result->getString("destination"),
-                    .isOneWay = result->getBoolean("is_one_way"),
-                    .isRoundtrip = result->getBoolean("is_roundtrip"),
+                    .type = result->getBoolean("type"),
                     .fareCarrier = result->getString("f_carrier")
                 };
 

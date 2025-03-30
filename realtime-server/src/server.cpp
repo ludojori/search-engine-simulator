@@ -1,16 +1,36 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <chrono>
 
 #include "server_http.hpp"
 #include "client_https.hpp"
 #include "options.h"
 #include "flights-provider.h"
+#include "server-exceptions.h"
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 using HttpsClient = SimpleWeb::Client<SimpleWeb::HTTPS>;
 
 static const char* executableName = "server";
+
+/**
+ * A helper function for converting custom exception values to library error codes.
+ */
+SimpleWeb::StatusCode extractErrorCode(const Utils::HttpException& e)
+{
+	using namespace SimpleWeb;
+
+	switch(e.errorCode())
+	{
+		case 400: 	return StatusCode::client_error_bad_request;
+		case 401: 	return StatusCode::client_error_unauthorized;
+		case 403: 	return StatusCode::client_error_forbidden;
+		case 404: 	return StatusCode::client_error_not_found;
+		case 409: 	return StatusCode::client_error_conflict;
+		default: 	return StatusCode::server_error_internal_server_error;
+	}
+}
 
 /**
  * Apply options to server settings prior to initialization.
@@ -35,11 +55,42 @@ void addResources(HttpServer& server, std::shared_ptr<RealtimeServer::FlightsPro
     {
         try
         {
-            response->write("Hello, World!");
+            response->write("This is the default resource. Try: /flights?origin=origin&destination=destination\n");
         }
         catch(const std::exception& e)
         {
-            std::cerr << e.what() << '\n';
+            response->write(SimpleWeb::StatusCode::server_error_internal_server_error, std::string("Unexpected error: ") + e.what());
+        }
+    };
+
+    server.resource["^/flights$"]["GET"] = [provider](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    {
+        try
+        {
+            const auto queriesMap = request->parse_query_string();
+
+            std::string origin = "";
+            std::string destination = "";
+
+            const auto originIt = queriesMap.find("origin");
+            if(originIt != queriesMap.end())
+            {
+                origin = originIt->second;
+            }
+
+            const auto destinationIt = queriesMap.find("destination");
+            if(destinationIt != queriesMap.end())
+            {
+                destination = destinationIt->second;
+            }
+
+            std::this_thread::sleep_for(std::chrono::seconds(1)); // Simulate complex flight construction.
+
+            response->write(provider->getFlights(origin, destination));
+        }
+        catch(const Utils::HttpException& e)
+        {
+            response->write(extractErrorCode(e), e.what());
         }
     };
 }
@@ -50,81 +101,23 @@ int main(int argc, char **argv)
     {
         const auto execPathWithFilename = std::string(argv[0]);
 		const auto execPath = execPathWithFilename.substr(0, execPathWithFilename.size() - strlen(executableName));
-		auto configPath = execPathWithFilename.substr(0, execPathWithFilename.size() - 6) + "config.ini";
-        auto apiConfigPath = execPath + "../../api-server/bin/config.ini";
+		const auto configPath = execPath + "config.ini";
 
-        popl::OptionParser commandLineParser("Allowed options");
+        std::cout << "Parsing " << configPath << "..." << std::endl;
 
-        commandLineParser.add<popl::Switch>("h", "help", "Print this help message");
-        commandLineParser.add<popl::Value<std::string>, popl::Attribute::optional>("c", "config", "Path to the configuration file of this server");
-        commandLineParser.add<popl::Value<std::string>, popl::Attribute::optional>("a", "api-config", "Path to the configuration file of the API server");
-        commandLineParser.parse(argc, argv);        
+        Utils::Options options(configPath);
 
-        if(commandLineParser.get_option<popl::Switch>("help")->is_set())
-        {
-            std::cout << commandLineParser.help() << std::endl;
-            return 0;
-        }
+        std::cout << "Done." << std::endl;
 
-        std::string errorMessage;
-
-        auto configOption = commandLineParser.get_option<popl::Value<std::string>>("config");
-        auto apiConfigOption = commandLineParser.get_option<popl::Value<std::string>>("api-config");
-
-        if(configOption->is_set())
-        {
-            configPath = configOption->value();
-        }
-        else
-        {
-            std::cout << "Path to the configuration file not specified, defaulting to realtime-server/bin/config.ini" << std::endl;
-        }
-
-        {
-            std::ifstream configFile(configPath);
-
-            if(!configFile.good())
-            {
-                errorMessage += "Configuration file not found!\n";
-            }
-        }
-
-        if(apiConfigOption->is_set())
-        {
-            apiConfigPath = apiConfigOption->value();
-        }
-        else
-        {
-            std::cout << "Path to the API server configuration file not specified, defaulting to api-server/bin/config.ini" << std::endl;
-        }
-
-        {
-            std::ifstream configFile(apiConfigPath);
-
-            if(!configFile.good())
-            {
-                errorMessage += "API server configuration file not found!\n";
-            }
-        }
-
-        if(!errorMessage.empty())
-        {
-            std::cerr << "Fatal error: " << errorMessage << std::endl;
-            return 1;
-        }
-
-        Utils::Options configOptions(configPath);
         HttpServer server;
-        server.config.port = configOptions.getPort();
-
-        configure(server, configOptions);
-
-        auto provider = std::make_shared<RealtimeServer::FlightsProvider>(configOptions.getMySqlHost(),
-                                                                          configOptions.getMySqlPort(),
-                                                                          configOptions.getMySqlUsername(),
-                                                                          configOptions.getMySqlPassword(),
-                                                                          configOptions.getMySqlDatabase());
-
+        
+        auto provider = std::make_shared<RealtimeServer::FlightsProvider>(options.getMySqlHost(),
+                                                                          options.getMySqlPort(),
+                                                                          options.getMySqlUsername(),
+                                                                          options.getMySqlPassword(),
+                                                                          options.getMySqlDatabase());
+        
+        configure(server, options);
         addResources(server, provider);
         
         std::thread serverThread([&server]()
@@ -133,29 +126,6 @@ int main(int argc, char **argv)
         });
 
         std::cout << "Server started on port " << server.config.port << "..." << std::endl;
-
-        Utils::Options apiConfigOptions(apiConfigPath);
-
-        const std::string configServerUri = apiConfigOptions.getHost() + ":" + std::to_string(apiConfigOptions.getPort());
-
-        std::cout << "Connecting to API server at " << configServerUri << std::endl;
-
-        HttpsClient client(configServerUri, false);
-
-        while(true)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-
-            std::cout << "Sending GET request to " << configServerUri << "..." << std::endl;
-
-            SimpleWeb::CaseInsensitiveMultimap header;
-            header.emplace("Content-Type", "application/json");
-
-            auto response = client.request("GET", "/config/users", "", header);
-            std::cout << "Response received!\n"
-                      << "Status Code: " << response->status_code << "\n"
-                      << "Content: " << response->content.string() << std::endl;
-        }
         
         serverThread.join();
 

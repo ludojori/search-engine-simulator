@@ -200,7 +200,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 		catch(const std::exception& e)
 		{
-			response->write(SimpleWeb::StatusCode::server_error_internal_server_error, std::string("The server encountered an error."));
+			response->write(SimpleWeb::StatusCode::server_error_internal_server_error, std::string("Unexpected error: ") + e.what());
 		}
 	};
 
@@ -328,7 +328,7 @@ int main(int /*argc*/, char **argv)
 	{
 		const auto execPathWithFilename = std::string(argv[0]);
 		const auto execPath = execPathWithFilename.substr(0, execPathWithFilename.size() - strlen(executableName));
-		const auto configPath = execPathWithFilename.substr(0, execPathWithFilename.size() - 6) + "config.ini";
+		const auto configPath = execPath + "config.ini";
 
 		std::cout << "Parsing " << configPath << "..." << std::endl;
 
