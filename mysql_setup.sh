@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # Set variables
-MYSQL_USER="root"
-MYSQL_PASS="password"
 DUMP_FILE="/sql/create-tables.sql"
 
 # Helper function to display messages
@@ -34,7 +32,7 @@ LIB_MYSQL_CLIENT_DEV_INSTALLED=true
 
 if ! dpkg -l | grep -q "mysql-server"; then
     log "mysql-server libraries not found. Trying to install..."
-    sudo apt-get update && sudo apt-get install -y libmysqlclient-dev || error "Failed to install MySQL dev libraries."
+    sudo apt-get update && sudo apt-get install -y mysql-server || error "Failed to install MySQL server."
 fi
 
 LIB_MYSQL_SERVER_INSTALLED=true
@@ -61,13 +59,13 @@ log "SQL dump file found: $DUMP_FILE_FULL_PATH"
 
 # Test MySQL connection
 log "Checking MySQL connection..."
-if ! mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" -e "exit" &> /dev/null; then
-    error "Unable to connect to MySQL. Check login credentials."
+if ! sudo mysql -e "exit" &> /dev/null; then
+    error "Unable to connect to MySQL. Ensure MySQL is running and accessible."
 fi
 log "MySQL connection successful."
 
 # Load the database dump
 log "Importing SQL dump file into MySQL..."
-if mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" < "$DUMP_FILE_FULL_PATH"; then
+if sudo mysql < "$DUMP_FILE_FULL_PATH"; then
     log "✅ MySQL setup is complete!"
 fi
