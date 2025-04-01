@@ -67,5 +67,19 @@ log "MySQL connection successful."
 # Load the database dump
 log "Importing SQL dump file into MySQL..."
 if sudo mysql < "$DUMP_FILE_FULL_PATH"; then
-    log "✅ MySQL setup is complete!"
+    log "✅ SQL dump imported successfully!"
+else
+    error "Failed to import SQL dump."
 fi
+
+# Create a new MySQL user and grant privileges
+log "Creating MySQL user and granting privileges..."
+if sudo mysql -e "CREATE USER IF NOT EXISTS 'mysql-user'@'localhost' IDENTIFIED BY 'mysql-password'; \
+                  GRANT ALL PRIVILEGES ON search_engine_simulation.* TO 'mysql-user'@'localhost'; \
+                  FLUSH PRIVILEGES;"; then
+    log "✅ MySQL user 'mysql-user' created (or already exists) and privileges granted."
+else
+    error "Failed to create MySQL user or grant privileges."
+fi
+
+log "✅ MySQL setup is complete!"
