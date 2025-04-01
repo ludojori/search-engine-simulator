@@ -194,7 +194,14 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		try
 		{
 			const char* helpMessage = "This is the default resource.\n"
-									  "Try /config/users-safe, /config/users, /config/pairs-safe0, /config/pairs-safe1, /config/pairs, or /config/pairs/{origin}-{destination}.";
+									   "The following endpoints are available:\n"
+									   "/config/users/safe\n"
+									   "/config/users\n"
+									   "/config/pairs/unsafe/{origin}-{destination}\n"
+									   "/config/pairs/safe\n"
+									   "/config/pairs\n"
+									   "/config/pairs/safe/{origin}-{destination}\n"
+									   ;
 			SimpleWeb::CaseInsensitiveMultimap headers = { { "Content-Type", "text/plain" } };
 			response->write(helpMessage, headers);
 		}
@@ -204,7 +211,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/users-safe$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/users/safe$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
@@ -234,25 +241,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/pairs-safe0$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
-	{
-		try
-		{
-			verifyHeaders(request->header);
-
-			const std::string content = request->content.string();
-			const Utils::Pair pair = parsePair(content);
-
-			provider->insertPair(pair);
-			response->write(SimpleWeb::StatusCode::success_created, content);
-		}
-		catch(const HttpException& e)
-		{
-			response->write(extractErrorCode(e), e.what());
-		}
-	};
-
-	server.resource["^/config/pairs-safe1$"]["POST"] = [provider, pairSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/pairs/safe$"]["POST"] = [provider, pairSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
@@ -270,7 +259,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		}
 	};
 
-	server.resource["^/config/pairs$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/pairs/safe$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
