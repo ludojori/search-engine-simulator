@@ -20,7 +20,7 @@ namespace ApiServer
     ConfigProvider::ConfigProvider(const std::string& dbHost, const int dbPort, const std::string& username, const std::string& password, const std::string& database) :
         Utils::MySqlProvider(dbHost, dbPort, username, password, database) {}
 
-    void ConfigProvider::insertUser(const Utils::User& user)
+    void ConfigProvider::insertUserSafe(const Utils::User& user)
     {
         try
         {
@@ -36,7 +36,22 @@ namespace ApiServer
         }
     }
 
-    void ConfigProvider::insertPair(const Utils::Pair& pair)
+    void ConfigProvider::insertUserUnsafe(const Utils::User& user)
+    {
+        const std::string queryStr = "INSERT INTO users (name, password, type_id) VALUES ('" + user.username + "','" + user.password + "'," + std::to_string(static_cast<int>(user.type)) + ")";
+        
+        try
+        {
+            auto stmt = createStatement();
+            stmt->execute(queryStr);
+        }
+        catch(const sql::SQLException& e)
+        {
+            throw Utils::HttpInternalServerError(e.what());
+        }
+    }
+
+    void ConfigProvider::insertPairSafe(const Utils::Pair& pair)
     {
         const std::string serializedPair = getPair(pair.origin, pair.destination);
         if(!serializedPair.empty())

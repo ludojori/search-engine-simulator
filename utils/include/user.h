@@ -10,11 +10,11 @@
 
 namespace Utils
 {
-    enum class UserType
+    enum class UserType : int
     {
-        External = 0,
-        Internal,
-        Manager
+        External = 1,
+        Internal = 2,
+        Manager = 3
     };
 
     static const std::unordered_map<UserType, std::string> userTypes = {

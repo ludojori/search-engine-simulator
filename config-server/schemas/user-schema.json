@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "User",
+    "description": "A pair of airports that are connected by a direct flight, along with other configurations",
+    "type": "object",
+    "properties": {
+        "username": {
+            "description": "The username of the user",
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9_]+$"
+        },
+        "password": {
+            "description": "The password for the user",
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 100
+        },
+        "user_type": {
+            "description": "The type of user, where 1 is Internal, 2 is External, and 3 is Manager",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+        }
+    },
+    "required": [
+        "username",
+        "password",
+        "user_type"
+    ],
+    "additionalProperties": false
+}

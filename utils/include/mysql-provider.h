@@ -16,12 +16,40 @@ namespace Utils
     template<typename RawPtr>
     class PointerWrapper;
 
-    enum class PermissionLevel
+    enum class PermissionLevel : uint8_t
     {
-        None = 0,
-        Read,
-        Write
+        None  = 0,
+        Read  = 1 << 0,
+        Write = 1 << 1,
+        Admin = 1 << 2 // Optional, for future extensibility
     };
+
+    inline PermissionLevel operator|(PermissionLevel a, PermissionLevel b)
+    {
+        return static_cast<PermissionLevel>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    }
+
+    inline PermissionLevel operator&(PermissionLevel a, PermissionLevel b)
+    {
+        return static_cast<PermissionLevel>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
+    }
+
+    inline bool hasPermission(PermissionLevel userPerms, PermissionLevel required)
+    {
+        return (static_cast<uint8_t>(userPerms) & static_cast<uint8_t>(required)) == static_cast<uint8_t>(required);
+    }
+
+    inline const char* toString(PermissionLevel level)
+    {
+        switch(level)
+        {
+            case PermissionLevel::None: return "None";
+            case PermissionLevel::Read: return "Read";
+            case PermissionLevel::Write: return "Write";
+            case PermissionLevel::Admin: return "Admin";
+            default: return "Unknown";
+        }
+    }
 
     enum class OperationType
     {
@@ -42,6 +70,16 @@ namespace Utils
         MySqlProvider(const MySqlProvider&) = delete;
         MySqlProvider& operator=(const MySqlProvider&) = delete;
 
+        bool isAuthenticated(const std::string& username,
+                             const std::string& password);
+
+        bool isAuthorized(const std::string& username,
+                          OperationType operationType, 
+                          PermissionLevel permissionLevel);
+
+        virtual ~MySqlProvider();
+
+    protected:
         /**
          * @brief For SELECT queries. Afterwards call executeQuery() on the returned object.
          */
@@ -51,8 +89,6 @@ namespace Utils
          * @brief For INSERT, UPDATE, DELETE queries.
          */
         PointerWrapper<sql::PreparedStatement> prepareStatement(const std::string& stmtStr);
-
-        virtual ~MySqlProvider();
 
     private:
         const std::string _dbHost;

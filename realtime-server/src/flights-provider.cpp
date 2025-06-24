@@ -14,6 +14,24 @@
 
 namespace RealtimeServer
 {
+    static double generateRandomPrice(double minPrice, double maxPrice)
+    {
+        std::random_device rd; // Seed for the random number engine
+        std::mt19937 gen(rd()); // Mersenne Twister random number engine
+        std::uniform_real_distribution<double> dis(minPrice, maxPrice); // Uniform distribution in the range [minPrice, maxPrice]
+
+        return dis(gen);
+    }
+
+    static int generateRandomCabinClass()
+    {
+        std::random_device rd; // Seed for the random number engine
+        std::mt19937 gen(rd()); // Mersenne Twister random number engine
+        std::uniform_int_distribution<int> dis(0, 3); // Uniform distribution for cabin classes (0 to 3)
+
+        return dis(gen);
+    }
+
     FlightsProvider::FlightsProvider(const std::string& dbHost,
                                      const int dbPort,
                                      const std::string& username,
@@ -126,9 +144,8 @@ namespace RealtimeServer
                 }
             }
     
-            std::string insertQuery = "INSERT INTO flights (id, pair_id, dep_datetime, arr_datetime, price, currency, cabin) VALUES ";
+            std::string insertQuery = "INSERT INTO flights (pair_id, dep_datetime, arr_datetime, price, currency, cabin) VALUES ";
 
-            int id = 0;
             for(const auto& pairId : pairIds)
             {
                 const std::string& departureDatetime = "2021-01-01 00:00:00";
@@ -139,10 +156,9 @@ namespace RealtimeServer
                 const double price = generateRandomPrice(minPrice, maxPrice);
     
                 const std::string& currency = "USD";
-                const int cabinClass = 0;
+                const int cabinClass = generateRandomCabinClass();
     
-                insertQuery += "(" + std::to_string(id) + ", " + std::to_string(pairId) + ", '" + departureDatetime + "', '" + arrivalDatetime + "', " + std::to_string(price) + ", '" + currency + "', " + std::to_string(cabinClass) + "),";
-                ++id;
+                insertQuery += "(" + std::to_string(pairId) + ", '" + departureDatetime + "', '" + arrivalDatetime + "', " + std::to_string(price) + ", '" + currency + "', " + std::to_string(cabinClass) + "),";
             }
     
             insertQuery.pop_back();
@@ -157,15 +173,6 @@ namespace RealtimeServer
         {
             throw Utils::HttpInternalServerError(e.what());
         }
-    }
-
-    double FlightsProvider::generateRandomPrice(double minPrice, double maxPrice)
-    {
-        std::random_device rd; // Seed for the random number engine
-        std::mt19937 gen(rd()); // Mersenne Twister random number engine
-        std::uniform_real_distribution<double> dis(minPrice, maxPrice); // Uniform distribution in the range [minPrice, maxPrice]
-
-        return dis(gen); // Generate and return the random price
     }
 
     FlightsProvider::~FlightsProvider()

@@ -3,7 +3,10 @@
 #include <sstream>
 #include <iomanip>
 
+// This removes an annoying compilation message.
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/json/src.hpp>
+#include <boost/beast/core/detail/base64.hpp>
 
 #include <valijson/adapters/boost_json_adapter.hpp>
 #include <valijson/schema.hpp>
@@ -17,6 +20,8 @@
 #include "user.h"
 #include "pair.h"
 #include "server-exceptions.h"
+
+#include <openssl/evp.h>
 
 using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 using namespace Utils;
@@ -168,6 +173,71 @@ void verifyHeaders(const SimpleWeb::CaseInsensitiveMultimap& headers)
 	{
 		throw HttpBadRequest("Invalid Content-Type header.");
 	}
+
+	auto authHeader = headers.find("Authorization");
+	if(authHeader == headers.end())
+	{
+		throw HttpBadRequest("Missing Authorization header.");
+	}
+}
+
+/**
+ * Extracts the value of the Authorization header from the request headers.
+ * Only accepts the Basic scheme. Throws HttpBadRequest if missing or invalid.
+ */
+std::string extractAuthHeader(const SimpleWeb::CaseInsensitiveMultimap& headers)
+{
+    auto authHeader = headers.find("Authorization");
+    const std::string& value = authHeader->second;
+    const std::string prefix = "Basic ";
+
+    if (value.substr(0, prefix.size()) != prefix)
+    {
+        throw HttpBadRequest("Authorization header must use Basic scheme.");
+    }
+
+    return value.substr(prefix.size());
+}
+
+std::pair<std::string, std::string> parseBasicAuthCredentials(const SimpleWeb::CaseInsensitiveMultimap& headers)
+{
+    std::string encoded = extractAuthHeader(headers);
+
+    // Decode Base64 using boost::beast::detail::base64::decode
+    std::string decoded;
+    {
+        std::vector<unsigned char> buf((encoded.size() * 3) / 4 + 1);
+        auto result = boost::beast::detail::base64::decode(buf.data(), encoded.data(), encoded.size());
+        decoded.assign(reinterpret_cast<const char*>(buf.data()), result.first);
+    }
+
+    // Split at the first colon
+    auto pos = decoded.find(':');
+    if (pos == std::string::npos)
+        throw HttpBadRequest("Malformed Basic auth credentials.");
+    std::string username = decoded.substr(0, pos);
+    std::string password = decoded.substr(pos + 1);
+    return {username, password};
+}
+
+std::string hashPasswordSHA256(const std::string& password)
+{
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hashLen = 0;
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+
+    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx, password.data(), password.size());
+    EVP_DigestFinal_ex(ctx, hash, &hashLen);
+    EVP_MD_CTX_free(ctx);
+
+    std::ostringstream oss;
+    for (unsigned int i = 0; i < hashLen; ++i)
+	{
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+	}
+
+    return oss.str();
 }
 
 /**
@@ -187,7 +257,7 @@ void configure(HttpsServer& server, const Utils::Options& options)
 /**
  * Define server endpoints and behavior.
  */
-void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider> provider, const std::string& pairSchemaJson)
+void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider> provider, const std::string& pairSchemaJson, const std::string& userSchemaJson)
 {
 	server.default_resource["GET"] = [](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
@@ -195,12 +265,12 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		{
 			const char* helpMessage = "This is the default resource.\n"
 									   "The following endpoints are available:\n"
-									   "/config/users/safe\n"
-									   "/config/users\n"
-									   "/config/pairs/unsafe/{origin}-{destination}\n"
-									   "/config/pairs/safe\n"
-									   "/config/pairs\n"
-									   "/config/pairs/safe/{origin}-{destination}\n"
+									   "[POST] /config/users/safe\n"
+									   "[POST] /config/users/unsafe\n"
+									   "[GET]  /config/users\n"
+									   "[GET]  /config/pairs/unsafe/{origin}-{destination}\n"
+									   "[POST] /config/pairs/safe\n"
+									   "[GET]  /config/pairs/safe/{origin}-{destination}\n"
 									   ;
 			SimpleWeb::CaseInsensitiveMultimap headers = { { "Content-Type", "text/plain" } };
 			response->write(helpMessage, headers);
@@ -216,11 +286,40 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		try
 		{
 			verifyHeaders(request->header);
-
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
 			const std::string content = request->content.string();
 			const Utils::User user = parseUser(content);
 			
-			provider->insertUser(user);
+			provider->insertUserSafe(user);
+			response->write(SimpleWeb::StatusCode::success_created, content);
+		}
+		catch(const HttpException& e)
+		{
+			response->write(extractErrorCode(e), e.what());
+		}
+	};
+
+	server.resource["^/config/users/unsafe"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	{
+		/**
+		 * This endpoint allows for SQL injection vulnerabilities in the request body,
+		 * by using string concatenation underneath to build a SQL query.
+		 * The following curl command demonstrates how to exploit this vulnerability:
+		 * curl -k -X POST https://localhost:8080/config/users/unsafe \
+  		 * -H "Content-Type: application/json" \
+		 * -H "Authorization: Basic YWRtaW46cGFzc3dvcmQ=" \
+		 * -d '{"username": "attacker\'); UPDATE users SET type_id=7 WHERE username='\''admin'\''; -- ", "password": "irrelevant", "type": 0}'
+		 */
+		try
+		{
+			verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
+			const std::string content = request->content.string();
+			const Utils::User user = parseUser(content);
+			
+			provider->insertUserUnsafe(user);
 			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
 		catch(const HttpException& e)
@@ -233,6 +332,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	{
 		try
 		{
+			verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
 			response->write("{\"users\":" + provider->getUsers() + "}");
 		}
 		catch(const HttpException& e)
@@ -246,11 +348,13 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 		try
 		{
 			verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
 			const std::string content = request->content.string();
 			validateJson(pairSchemaJson, content);
 			const Utils::Pair pair = parsePair(content);
 
-			provider->insertPair(pair);
+			provider->insertPairSafe(pair);
 			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
 		catch(const HttpException& e)
@@ -263,6 +367,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	{
 		try
 		{
+			verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
 			response->write(provider->getPairs());
 		}
 		catch(const HttpException& e)
@@ -275,6 +382,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	{
 		try
 		{
+			verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
 			const std::string& path = request->path_match[0];
 			const std::string prefix = "/config/pairs/safe/";
 			const std::string filter = path.substr(prefix.size());
@@ -291,11 +401,16 @@ void addResources(HttpsServer& server, std::shared_ptr<ApiServer::ConfigProvider
 	server.resource["^/config/pairs/unsafe/.*$"]["GET"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		/**
+		 * This endpoint allows for SQL injection vulnerabilities in the URI path section,
+		 * by utilizing hex symbols for special characters like single quotes and spaces.
 		 * Experiment with the following curl command:
 		 * curl -v --cacert server.crt -H "Content-Type: application/json"  'https://localhost:8080/config/pairs/unsafe/SOF-LON%27%20OR%20%27%27=%27'
 		 */
 		try
 		{
+			verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+			
 			const std::string& path = request->path_match[0];
 			const std::string parsedPath = decodeHexSymbols(path);
 			const std::string prefix = "/config/pairs/unsafe/";
@@ -327,6 +442,7 @@ int main(int /*argc*/, char **argv)
 		std::cout << "Reading JSON schemas..." << std::endl;
 
 		const std::string pairSchemaJson = loadFileToString(execPath + "../schemas/pair-schema.json");
+		const std::string userSchemaJson = loadFileToString(execPath + "../schemas/user-schema.json");
 
 		std::cout << "Done." << std::endl;
 
@@ -339,7 +455,7 @@ int main(int /*argc*/, char **argv)
 		HttpsServer server(execPath + options.getCertificatePath(), execPath + options.getPrivateKeyPath());
 
 		configure(server, options);
-		addResources(server, provider, pairSchemaJson);
+		addResources(server, provider, pairSchemaJson, userSchemaJson);
 
 		std::thread serverThread([&server]()
 		{

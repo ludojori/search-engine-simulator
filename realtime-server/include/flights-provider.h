@@ -19,8 +19,6 @@ namespace RealtimeServer
         ~FlightsProvider();
         
     private:
-        double generateRandomPrice(double minPrice, double maxPrice);
-
         bool areFlightsPopulated = false;
     };
 }
