@@ -2,45 +2,14 @@
 #include <memory>
 #include <thread>
 
-#include "server_http.hpp"
-#include "options.h"
+#include "server-common.h"
 #include "cache-provider.h"
-#include "server-exceptions.h"
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 
 static const char* executableName = "server";
 
-/**
- * A helper function for converting custom exception values to library error codes.
- */
-SimpleWeb::StatusCode extractErrorCode(const Utils::HttpException& e)
-{
-	using namespace SimpleWeb;
-
-	switch(e.errorCode())
-	{
-		case 400: 	return StatusCode::client_error_bad_request;
-		case 401: 	return StatusCode::client_error_unauthorized;
-		case 403: 	return StatusCode::client_error_forbidden;
-		case 404: 	return StatusCode::client_error_not_found;
-		case 409: 	return StatusCode::client_error_conflict;
-		default: 	return StatusCode::server_error_internal_server_error;
-	}
-}
-
-void configure(HttpServer& server, const Utils::Options& options)
-{
-    server.config.address = options.getHost();
-    server.config.port = options.getPort();
-    server.config.reuse_address = false;
-    server.config.max_request_streambuf_size = options.getMaxRequestStreambufSize();
-    server.config.thread_pool_size = options.getThreadPoolSize();
-    server.config.timeout_content = options.getTimeoutContent();
-    server.config.timeout_request = options.getTimeoutRequest();
-}
-
-void addResources(HttpServer& server, std::shared_ptr<CacheServer::CacheProvider> provider)
+void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> provider)
 {
     server.default_resource["GET"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
@@ -98,11 +67,11 @@ int main(int argc, char **argv)
 
 		std::cout << "Done." << std::endl;
 
-        auto provider = std::make_shared<CacheServer::CacheProvider>(options.getMySqlHost(),
-                                                                     options.getMySqlPort(),
-                                                                     options.getMySqlUsername(),
-                                                                     options.getMySqlPassword(),
-                                                                     options.getMySqlDatabase());
+        auto provider = std::make_shared<CacheServer::Provider>(options.getMySqlHost(),
+                                                                options.getMySqlPort(),
+                                                                options.getMySqlUsername(),
+                                                                options.getMySqlPassword(),
+                                                                options.getMySqlDatabase());
 
         HttpServer server;
 

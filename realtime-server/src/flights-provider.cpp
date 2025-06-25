@@ -32,17 +32,17 @@ namespace RealtimeServer
         return dis(gen);
     }
 
-    FlightsProvider::FlightsProvider(const std::string& dbHost,
-                                     const int dbPort,
-                                     const std::string& username,
-                                     const std::string& password,
-                                     const std::string& database)
+    Provider::Provider(const std::string& dbHost,
+                       const int dbPort,
+                       const std::string& username,
+                       const std::string& password,
+                       const std::string& database)
         : Utils::MySqlProvider(dbHost, dbPort, username, password, database)
     {
         populateFlightsTable();
     }
 
-    std::string FlightsProvider::getFlights(const std::string& origin, const std::string& destination)
+    std::string Provider::getFlights(const std::string& origin, const std::string& destination)
     {
         const bool setOrigin = !origin.empty();
         const bool setDestination = !destination.empty();
@@ -111,7 +111,7 @@ namespace RealtimeServer
         return resultStr;
     }
 
-    void FlightsProvider::populateFlightsTable()
+    void Provider::populateFlightsTable()
     {
         if(areFlightsPopulated)
         {
@@ -173,10 +173,5 @@ namespace RealtimeServer
         {
             throw Utils::HttpInternalServerError(e.what());
         }
-    }
-
-    FlightsProvider::~FlightsProvider()
-    {
-        Utils::MySqlProvider::~MySqlProvider();
     }
 }

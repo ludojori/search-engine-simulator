@@ -12,15 +12,19 @@
 #include "pointer-wrapper.h"
 #include "server-exceptions.h"
 
-namespace ApiServer
+namespace ConfigServer
 {
     static const std::string usersRawStmt = "INSERT INTO users (name, password, type_id) VALUES (?,?,?)";
     static const std::string pairsRawStmt = "INSERT INTO pairs (origin, destination, type, f_carrier) VALUES (?,?,?,?,?)";
 
-    ConfigProvider::ConfigProvider(const std::string& dbHost, const int dbPort, const std::string& username, const std::string& password, const std::string& database) :
-        Utils::MySqlProvider(dbHost, dbPort, username, password, database) {}
+    Provider::Provider(const std::string& dbHost,
+                       const int dbPort,
+                       const std::string& username,
+                       const std::string& password,
+                       const std::string& database)
+        : Utils::MySqlProvider(dbHost, dbPort, username, password, database) {}
 
-    void ConfigProvider::insertUserSafe(const Utils::User& user)
+    void Provider::insertUserSafe(const Utils::User& user)
     {
         try
         {
@@ -36,7 +40,7 @@ namespace ApiServer
         }
     }
 
-    void ConfigProvider::insertUserUnsafe(const Utils::User& user)
+    void Provider::insertUserUnsafe(const Utils::User& user)
     {
         const std::string queryStr = "INSERT INTO users (name, password, type_id) VALUES ('" + user.username + "','" + user.password + "'," + std::to_string(static_cast<int>(user.type)) + ")";
         
@@ -51,7 +55,7 @@ namespace ApiServer
         }
     }
 
-    void ConfigProvider::insertPairSafe(const Utils::Pair& pair)
+    void Provider::insertPairSafe(const Utils::Pair& pair)
     {
         const std::string serializedPair = getPair(pair.origin, pair.destination);
         if(!serializedPair.empty())
@@ -74,7 +78,7 @@ namespace ApiServer
         }   
     }
 
-    std::string ConfigProvider::getUsers()
+    std::string Provider::getUsers()
     {
         try
         {       
@@ -110,7 +114,7 @@ namespace ApiServer
         }
     }
 
-    std::string ConfigProvider::getPairs()
+    std::string Provider::getPairs()
     {
         try
         {       
@@ -147,7 +151,7 @@ namespace ApiServer
         }
     }
 
-    std::string ConfigProvider::getPair(const std::string& origin, const std::string& destination)
+    std::string Provider::getPair(const std::string& origin, const std::string& destination)
     {
         std::string resultStr = "";
 
@@ -183,7 +187,7 @@ namespace ApiServer
         return resultStr;
     }
 
-    std::string ConfigProvider::getPairUnsafe(const std::string& origin, const std::string& destination)
+    std::string Provider::getPairUnsafe(const std::string& origin, const std::string& destination)
     {
         const std::string queryStr = "SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'";
         std::string resultStr = "";

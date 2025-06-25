@@ -11,14 +11,14 @@
 
 namespace CacheServer
 {
-    CacheProvider::CacheProvider(const std::string& dbHost,
-                                 const int dbPort,
-                                 const std::string& username,
-                                 const std::string& password,
-                                 const std::string& database)
+    Provider::Provider(const std::string& dbHost,
+                       const int dbPort,
+                       const std::string& username,
+                       const std::string& password,
+                       const std::string& database)
         : Utils::MySqlProvider(dbHost, dbPort, username, password, database) {}
 
-    std::string CacheProvider::getFlights(const std::string& origin, const std::string& destination)
+    std::string Provider::getFlights(const std::string& origin, const std::string& destination)
     {
         const bool setOrigin = !origin.empty();
         const bool setDestination = !destination.empty();
@@ -85,10 +85,5 @@ namespace CacheServer
         resultStr += "]";
 
         return resultStr;
-    }
-
-    CacheProvider::~CacheProvider()
-    {
-        Utils::MySqlProvider::~MySqlProvider();
     }
 }

@@ -8,16 +8,16 @@ namespace Utils
     class Pair;
 }
 
-namespace ApiServer
+namespace ConfigServer
 {
-    class ConfigProvider final : public Utils::MySqlProvider
+    class Provider final : public Utils::MySqlProvider
     {
     public:
-        explicit ConfigProvider(const std::string& dbHost,
-                                const int dbPort,
-                                const std::string& username,
-                                const std::string& password,
-                                const std::string& database);
+        explicit Provider(const std::string& dbHost,
+                          const int dbPort,
+                          const std::string& username,
+                          const std::string& password,
+                          const std::string& database);
 
         /**
          * @brief Uses a prepared statement.
