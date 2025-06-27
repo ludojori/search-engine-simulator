@@ -6,28 +6,11 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include "user-type.h"
 #include "server-exceptions.h"
 
 namespace Utils
 {
-    enum class UserType : int
-    {
-        External = 1,
-        Internal = 2,
-        Manager = 3
-    };
-
-    static const std::unordered_map<UserType, std::string> userTypes = {
-        { UserType::External,   "external" },
-        { UserType::Internal,   "internal" },
-        { UserType::Manager,    "manager" }
-    };
-
-    inline std::string getUserTypeString(const UserType val)
-    {
-        return userTypes.find(val)->second;
-    }
-
     struct User
     {
         std::string username;

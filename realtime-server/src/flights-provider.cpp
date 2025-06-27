@@ -79,36 +79,45 @@ namespace RealtimeServer
 
         queryStr += ";";
 
-        auto stmt = createStatement();
-        auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
 
-        std::string resultStr = "[";
-
-        while(result->next())
+        try
         {
-            if(resultStr.size() > 1)
+            auto stmt = createStatement();
+            auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+    
+            std::string resultStr = "[";
+    
+            while(result->next())
             {
-                resultStr += ",";
+                if(resultStr.size() > 1)
+                {
+                    resultStr += ",";
+                }
+    
+                Utils::Flight flight {
+                    .origin = result->getString("origin"),
+                    .destination = result->getString("destination"),
+                    .type = result->getBoolean("type") ? Utils::FlightType::Roundtrip : Utils::FlightType::OneWay,
+                    .departureTime = result->getString("dep_datetime"),
+                    .arrivalTime = result->getString("arr_datetime"),
+                    .fareCarrier = result->getString("f_carrier"),
+                    .price = result->getDouble("price"),
+                    .currency = result->getString("currency"),
+                    .cabin = static_cast<Utils::CabinType>(result->getInt("cabin"))
+                };
+    
+                resultStr += flight.serialize();
             }
-
-            Utils::Flight flight {
-                .origin = result->getString("origin"),
-                .destination = result->getString("destination"),
-                .type = result->getBoolean("type") ? Utils::FlightType::Roundtrip : Utils::FlightType::OneWay,
-                .departureTime = result->getString("dep_datetime"),
-                .arrivalTime = result->getString("arr_datetime"),
-                .fareCarrier = result->getString("f_carrier"),
-                .price = result->getDouble("price"),
-                .currency = result->getString("currency"),
-                .cabin = static_cast<Utils::CabinType>(result->getInt("cabin"))
-            };
-
-            resultStr += flight.serialize();
+    
+            resultStr += "]";
+    
+            return resultStr;
         }
-
-        resultStr += "]";
-
-        return resultStr;
+        catch(const std::exception& e)
+        {
+            throw Utils::HttpInternalServerError(e.what());
+        }
     }
 
     void Provider::populateFlightsTable()
@@ -121,8 +130,12 @@ namespace RealtimeServer
         try
         {
             {   // Check if flights table is already populated.
+                const std::string queryStr = "SELECT COUNT(*) AS count FROM flights";
+                std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
+
                 auto stmt = createStatement();
-                auto result = Utils::PointerWrapper(stmt->executeQuery("SELECT COUNT(*) AS count FROM flights"));
+                auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+
                 if(result->next())
                 {
                     if(result->getInt("count") > 0)
@@ -136,8 +149,12 @@ namespace RealtimeServer
             std::vector<int> pairIds;
 
             {
+                const std::string queryStr = "SELECT id FROM pairs";
+                std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
+
                 auto stmt = createStatement();
-                auto result = Utils::PointerWrapper(stmt->executeQuery("SELECT id FROM pairs"));
+                auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+
                 while(result->next())
                 {
                     pairIds.push_back(result->getInt("id"));
@@ -163,7 +180,9 @@ namespace RealtimeServer
     
             insertQuery.pop_back();
             insertQuery += ";";
-    
+
+            std::cout << "[DEBUG] Executing query " << insertQuery << std::endl;
+
             auto stmt = createStatement();
             stmt->execute(insertQuery);
     

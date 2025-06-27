@@ -55,35 +55,44 @@ namespace CacheServer
 
         queryStr += ";";
 
-        auto stmt = createStatement();
-        auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
 
-        std::string resultStr = "[";
-
-        while(result->next())
+        try
         {
-            if(resultStr.size() > 1)
+            auto stmt = createStatement();
+            auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+    
+            std::string resultStr = "[";
+    
+            while(result->next())
             {
-                resultStr += ",";
+                if(resultStr.size() > 1)
+                {
+                    resultStr += ",";
+                }
+    
+                Utils::Flight flight {
+                    .origin = result->getString("origin"),
+                    .destination = result->getString("destination"),
+                    .type = result->getBoolean("type") ? Utils::FlightType::Roundtrip : Utils::FlightType::OneWay,
+                    .departureTime = result->getString("dep_datetime"),
+                    .arrivalTime = result->getString("arr_datetime"),
+                    .fareCarrier = result->getString("f_carrier"),
+                    .price = result->getDouble("price"),
+                    .currency = result->getString("currency"),
+                    .cabin = static_cast<Utils::CabinType>(result->getInt("cabin"))
+                };
+    
+                resultStr += flight.serialize();
             }
-
-            Utils::Flight flight {
-                .origin = result->getString("origin"),
-                .destination = result->getString("destination"),
-                .type = result->getBoolean("type") ? Utils::FlightType::Roundtrip : Utils::FlightType::OneWay,
-                .departureTime = result->getString("dep_datetime"),
-                .arrivalTime = result->getString("arr_datetime"),
-                .fareCarrier = result->getString("f_carrier"),
-                .price = result->getDouble("price"),
-                .currency = result->getString("currency"),
-                .cabin = static_cast<Utils::CabinType>(result->getInt("cabin"))
-            };
-
-            resultStr += flight.serialize();
+    
+            resultStr += "]";
+    
+            return resultStr;
         }
-
-        resultStr += "]";
-
-        return resultStr;
+        catch(const std::exception& e)
+        {
+            throw Utils::HttpInternalServerError(e.what());
+        }
     }
 }

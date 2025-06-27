@@ -29,7 +29,8 @@ INSERT INTO user_types (type)
 VALUES
 ("Internal"),
 ("External"),
-("Manager");
+("Manager"),
+("Admin");
 
 CREATE TABLE users (
     id INT NOT NULL AUTO_INCREMENT,

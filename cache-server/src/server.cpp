@@ -27,6 +27,23 @@ void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> pro
     {
         try
         {
+            verifyHeaders(request->header);
+			auto [username, password] = parseBasicAuthCredentials(request->header);
+
+            if(!provider->isAuthenticated(username, password))
+            {
+                std::cout << "[DEBUG] Authentication failed for user: " << username << " password: " << password << std::endl;
+                throw Utils::HttpUnauthorized("Invalid username or password.");
+            }
+
+            if(!provider->isAuthorized(username, Utils::UserType::External) &&
+               !provider->isAuthorized(username, Utils::UserType::Internal) &&
+               !provider->isAuthorized(username, Utils::UserType::Manager) &&
+               !provider->isAuthorized(username, Utils::UserType::Admin))
+            {
+                throw Utils::HttpForbidden("User " + username + " is not authorized to perform this action.");
+            }
+
             const auto queriesMap = request->parse_query_string();
 
             std::string origin = "";
@@ -53,7 +70,7 @@ void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> pro
     };
 }
 
-int main(int argc, char **argv)
+int main(int /*argc*/, char **argv)
 {
     try
     {

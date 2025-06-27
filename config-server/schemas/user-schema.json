@@ -18,7 +18,7 @@
             "maxLength": 100
         },
         "user_type": {
-            "description": "The type of user, where 1 is Internal, 2 is External, and 3 is Manager",
+            "description": "The type of user, where 1 = Internal, 2 = External, 3 = Manager. A hidden value exists 4 = Admin, but it is intentionally not exposed in the API.",
             "type": "integer",
             "minimum": 1,
             "maximum": 3

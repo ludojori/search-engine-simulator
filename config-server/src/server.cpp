@@ -166,6 +166,17 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
 			
 			const std::string content = request->content.string();
 			const Utils::User user = parseUser(content);
@@ -194,10 +205,21 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
-			
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
+
 			const std::string content = request->content.string();
 			const Utils::User user = parseUser(content);
-			
+
 			provider->insertUserUnsafe(user);
 			response->write(SimpleWeb::StatusCode::success_created, content);
 		}
@@ -213,7 +235,19 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
-			
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
+			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
+
 			response->write("{\"users\":" + provider->getUsers() + "}");
 		}
 		catch(const HttpException& e)
@@ -228,7 +262,18 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
-			
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
+
 			const std::string content = request->content.string();
 			validateJson(pairSchemaJson, content);
 			const Utils::Pair pair = parsePair(content);
@@ -248,7 +293,19 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
-			
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
+			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
+
 			response->write(provider->getPairs());
 		}
 		catch(const HttpException& e)
@@ -263,7 +320,19 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
-			
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
+			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
+
 			const std::string& path = request->path_match[0];
 			const std::string prefix = "/config/pairs/safe/";
 			const std::string filter = path.substr(prefix.size());
@@ -289,7 +358,19 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		{
 			verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
-			
+
+			if(!provider->isAuthenticated(username, password))
+			{
+				throw HttpUnauthorized("Invalid username or password.");
+			}
+
+			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
+			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
+			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			{
+				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
+			}
+
 			const std::string& path = request->path_match[0];
 			const std::string parsedPath = decodeHexSymbols(path);
 			const std::string prefix = "/config/pairs/unsafe/";

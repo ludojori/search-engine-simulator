@@ -26,6 +26,10 @@ namespace ConfigServer
 
     void Provider::insertUserSafe(const Utils::User& user)
     {
+        std::cout << "[DEBUG] Inserting user with username=" << user.username
+                  << ", password=" << user.password
+                  << ", type=" << static_cast<int>(user.type)
+                  << " using prepared statement " << usersRawStmt << std::endl;
         try
         {
             auto stmt = prepareStatement(usersRawStmt);
@@ -43,7 +47,8 @@ namespace ConfigServer
     void Provider::insertUserUnsafe(const Utils::User& user)
     {
         const std::string queryStr = "INSERT INTO users (name, password, type_id) VALUES ('" + user.username + "','" + user.password + "'," + std::to_string(static_cast<int>(user.type)) + ")";
-        
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
+
         try
         {
             auto stmt = createStatement();
@@ -63,6 +68,12 @@ namespace ConfigServer
             throw Utils::HttpStateConflict("Pair already exists.");
         }
 
+        std::cout << "[DEBUG] Inserting pair with origin=" << pair.origin
+                  << ", destination=" << pair.destination
+                  << ", type=" << pair.type
+                  << ", fareCarrier=" << pair.fareCarrier
+                  << " using prepared statement " << pairsRawStmt << std::endl;
+
         try
         {
             auto stmt = prepareStatement(pairsRawStmt);
@@ -80,10 +91,13 @@ namespace ConfigServer
 
     std::string Provider::getUsers()
     {
+        const std::string queryStr = "SELECT * FROM users";
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
+
         try
-        {       
+        {
             auto stmt = createStatement();
-            auto result = Utils::PointerWrapper(stmt->executeQuery("SELECT * FROM users"));
+            auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
 
             std::string resultStr = "[";
 
@@ -116,10 +130,13 @@ namespace ConfigServer
 
     std::string Provider::getPairs()
     {
+        const std::string queryStr = "SELECT * FROM pairs";
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
+
         try
         {       
             auto stmt = createStatement();
-            auto result = Utils::PointerWrapper(stmt->executeQuery("SELECT * FROM pairs"));
+            auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
 
             std::string resultStr = "[";
 
@@ -154,13 +171,13 @@ namespace ConfigServer
     std::string Provider::getPair(const std::string& origin, const std::string& destination)
     {
         std::string resultStr = "";
+        const std::string queryStr = "SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'";
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
 
         try
         {      
             auto stmt = createStatement();
-            auto result = Utils::PointerWrapper(
-                stmt->executeQuery("SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'")
-            );
+            auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
 
             if(result->next())
             {
@@ -189,8 +206,9 @@ namespace ConfigServer
 
     std::string Provider::getPairUnsafe(const std::string& origin, const std::string& destination)
     {
-        const std::string queryStr = "SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'";
         std::string resultStr = "";
+        const std::string queryStr = "SELECT * FROM pairs WHERE origin='" + origin + "' AND destination='" + destination + "'";
+        std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
 
         try
         {      
