@@ -35,6 +35,11 @@ file(
     DESTINATION ${CMAKE_BINARY_DIR}/config-server/schemas
 )
 
+file(
+    COPY ${CMAKE_SOURCE_DIR}/config-server/requests/
+    DESTINATION ${CMAKE_BINARY_DIR}/config-server/requests
+)
+
 # Define paths for generated SSL files
 set(SSL_DIR "${CMAKE_BINARY_DIR}/config-server/ssl")
 set(SSL_KEY "${SSL_DIR}/server.key")

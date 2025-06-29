@@ -22,11 +22,11 @@
             "description": "The destination airport of the pair",
             "$ref": "#/definitions/airportCode"
         },
-        "isOneWay": {
-            "type": "boolean"
-        },
-        "isRoundtrip": {
-            "type": "boolean"
+        "type": {
+            "description": "The type of the pair, where 0 = One Way, 1 = Roundtrip",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
         },
         "fareCarrier": {
             "$ref": "#/definitions/carrierCode"

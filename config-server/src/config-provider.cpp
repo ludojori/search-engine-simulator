@@ -15,7 +15,7 @@
 namespace ConfigServer
 {
     static const std::string usersRawStmt = "INSERT INTO users (name, password, type_id) VALUES (?,?,?)";
-    static const std::string pairsRawStmt = "INSERT INTO pairs (origin, destination, type, f_carrier) VALUES (?,?,?,?,?)";
+    static const std::string pairsRawStmt = "INSERT INTO pairs (origin, destination, type, f_carrier) VALUES (?,?,?,?)";
 
     Provider::Provider(const std::string& dbHost,
                        const int dbPort,
@@ -190,18 +190,13 @@ namespace ConfigServer
 
                 resultStr = pair.serialize();
             }
+
+            return resultStr;
         }
         catch(const sql::SQLException& e)
         {
             throw Utils::HttpInternalServerError(e.what());
         }
-
-        if(resultStr.empty())
-        {
-            throw Utils::HttpNotFound("Pair not found.");
-        }
-
-        return resultStr;
     }
 
     std::string Provider::getPairUnsafe(const std::string& origin, const std::string& destination)

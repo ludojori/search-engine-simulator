@@ -122,32 +122,9 @@ namespace RealtimeServer
 
     void Provider::populateFlightsTable()
     {
-        if(areFlightsPopulated)
-        {
-            return;
-        }
-
         try
         {
-            {   // Check if flights table is already populated.
-                const std::string queryStr = "SELECT COUNT(*) AS count FROM flights";
-                std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
-
-                auto stmt = createStatement();
-                auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
-
-                if(result->next())
-                {
-                    if(result->getInt("count") > 0)
-                    {
-                        areFlightsPopulated = true;
-                        return;
-                    }
-                }
-            }
-
             std::vector<int> pairIds;
-
             {
                 const std::string queryStr = "SELECT id FROM pairs";
                 std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
@@ -160,7 +137,33 @@ namespace RealtimeServer
                     pairIds.push_back(result->getInt("id"));
                 }
             }
+
+            {
+                std::vector<int> pairIdsInFlights;
+                const std::string queryStr = "SELECT pair_id FROM flights";
+                std::cout << "[DEBUG] Executing query " << queryStr << std::endl;
+
+                auto stmt = createStatement();
+                auto result = Utils::PointerWrapper(stmt->executeQuery(queryStr));
+
+                while(result->next())
+                {
+                    pairIdsInFlights.push_back(result->getInt("pair_id"));
+                }
+
+                // Remove pairIds that are already present in pairIdsInFlights
+                pairIds.erase(std::remove_if(pairIds.begin(), pairIds.end(), [&pairIdsInFlights](int id) {
+                                             return std::find(pairIdsInFlights.begin(), pairIdsInFlights.end(), id) != pairIdsInFlights.end();}),
+                              pairIds.end());
     
+            }
+
+            if (pairIds.empty())
+            {
+                std::cout << "[DEBUG] No new pairs to insert into flights table." << std::endl;
+                return;
+            }
+
             std::string insertQuery = "INSERT INTO flights (pair_id, dep_datetime, arr_datetime, price, currency, cabin) VALUES ";
 
             for(const auto& pairId : pairIds)
@@ -175,7 +178,8 @@ namespace RealtimeServer
                 const std::string& currency = "USD";
                 const int cabinClass = generateRandomCabinClass();
     
-                insertQuery += "(" + std::to_string(pairId) + ", '" + departureDatetime + "', '" + arrivalDatetime + "', " + std::to_string(price) + ", '" + currency + "', " + std::to_string(cabinClass) + "),";
+                insertQuery += "(" + std::to_string(pairId) + ", '" + departureDatetime + "', '" + arrivalDatetime + "', " +
+                               std::to_string(price) + ", '" + currency + "', " + std::to_string(cabinClass) + "),";
             }
     
             insertQuery.pop_back();
@@ -185,8 +189,6 @@ namespace RealtimeServer
 
             auto stmt = createStatement();
             stmt->execute(insertQuery);
-    
-            areFlightsPopulated = true;
         }
         catch(const sql::SQLException& e)
         {

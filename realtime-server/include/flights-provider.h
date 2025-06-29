@@ -17,6 +17,5 @@ namespace RealtimeServer
         std::string getFlights(const std::string& origin, const std::string& destination);
         
     private:
-        bool areFlightsPopulated = false;
     };
 }

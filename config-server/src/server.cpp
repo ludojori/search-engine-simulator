@@ -147,9 +147,10 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 									   "[POST] /config/users/safe\n"
 									   "[POST] /config/users/unsafe\n"
 									   "[GET]  /config/users\n"
-									   "[GET]  /config/pairs/unsafe/{origin}-{destination}\n"
 									   "[POST] /config/pairs/safe\n"
+									   "[GET]  /config/pairs/safe\n"
 									   "[GET]  /config/pairs/safe/{origin}-{destination}\n"
+									   "[GET]  /config/pairs/unsafe/{origin}-{destination}\n"
 									   ;
 			SimpleWeb::CaseInsensitiveMultimap headers = { { "Content-Type", "text/plain" } };
 			response->write(helpMessage, headers);
@@ -160,7 +161,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		}
 	};
 
-	server.resource["^/config/users/safe$"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/users/safe$"]["POST"] = [provider, userSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		try
 		{
@@ -179,6 +180,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 			}
 			
 			const std::string content = request->content.string();
+			validateJson(userSchemaJson, content);
 			const Utils::User user = parseUser(content);
 			
 			provider->insertUserSafe(user);
@@ -190,7 +192,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 		}
 	};
 
-	server.resource["^/config/users/unsafe"]["POST"] = [provider](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
+	server.resource["^/config/users/unsafe"]["POST"] = [provider, userSchemaJson](std::shared_ptr<HttpsServer::Response> response, std::shared_ptr<HttpsServer::Request> request)
 	{
 		/**
 		 * This endpoint allows for SQL injection vulnerabilities in the request body,
@@ -218,6 +220,7 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 			}
 
 			const std::string content = request->content.string();
+			validateJson(userSchemaJson, content);
 			const Utils::User user = parseUser(content);
 
 			provider->insertUserUnsafe(user);
@@ -338,7 +341,13 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 			const std::string filter = path.substr(prefix.size());
 			const size_t delimiter = filter.find('-');
 
-			response->write(provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1)));
+			const auto pair = provider->getPair(filter.substr(0, delimiter), filter.substr(delimiter + 1));
+			if(pair.empty())
+			{
+				throw HttpNotFound("Pair not found.");
+			}
+
+			response->write(pair);
 		}
 		catch(const HttpException& e)
 		{
