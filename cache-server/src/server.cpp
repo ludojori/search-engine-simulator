@@ -6,13 +6,28 @@
 #include "cache-provider.h"
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+using namespace Utils;
 
 static const char* executableName = "server";
 
-void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> provider)
+const std::set<std::string> BLACKLISTED_IPS = {
+    "127.0.0.1"
+};
+
+void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> provider, const std::set<std::string>& blacklistedIPs)
 {
-    server.default_resource["GET"] = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.default_resource["GET"] = [blacklistedIPs](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
+        try
+        {
+            validateNotBlacklisted(request, blacklistedIPs);
+        }
+        catch(const HttpException& e)
+        {
+            response->write(extractErrorCode(e), e.what());
+            return;
+        }
+
         try
         {
             response->write("This is the default resource. Try: /flights?origin=origin&destination=destination\n");
@@ -23,25 +38,27 @@ void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> pro
         }
     };
 
-    server.resource["^/flights$"]["GET"] = [provider](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+    server.resource["^/flights$"]["GET"] = [provider, blacklistedIPs](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
     {
         try
         {
+            validateNotBlacklisted(request, blacklistedIPs);
+
             verifyHeaders(request->header);
 			auto [username, password] = parseBasicAuthCredentials(request->header);
 
             if(!provider->isAuthenticated(username, password))
             {
                 std::cout << "[DEBUG] Authentication failed for user: " << username << " password: " << password << std::endl;
-                throw Utils::HttpUnauthorized("Invalid username or password.");
+                throw HttpUnauthorized("Invalid username or password.");
             }
 
-            if(!provider->isAuthorized(username, Utils::UserType::External) &&
-               !provider->isAuthorized(username, Utils::UserType::Internal) &&
-               !provider->isAuthorized(username, Utils::UserType::Manager) &&
-               !provider->isAuthorized(username, Utils::UserType::Admin))
+            if(!provider->isAuthorized(username, UserType::External) &&
+               !provider->isAuthorized(username, UserType::Internal) &&
+               !provider->isAuthorized(username, UserType::Manager) &&
+               !provider->isAuthorized(username, UserType::Admin))
             {
-                throw Utils::HttpForbidden("User " + username + " is not authorized to perform this action.");
+                throw HttpForbidden("User " + username + " is not authorized to perform this action.");
             }
 
             const auto queriesMap = request->parse_query_string();
@@ -63,7 +80,7 @@ void addResources(HttpServer& server, std::shared_ptr<CacheServer::Provider> pro
 
             response->write(provider->getFlights(origin, destination));
         }
-        catch(const Utils::HttpException& e)
+        catch(const HttpException& e)
         {
             response->write(extractErrorCode(e), e.what());
         }
@@ -80,7 +97,7 @@ int main(int /*argc*/, char **argv)
 
 		std::cout << "Parsing " << configPath << "..." << std::endl;
 
-        Utils::Options options(configPath);
+        Options options(configPath);
 
 		std::cout << "Done." << std::endl;
 
@@ -93,7 +110,7 @@ int main(int /*argc*/, char **argv)
         HttpServer server;
 
         configure(server, options);
-        addResources(server, provider);
+        addResources(server, provider, options.getBlacklistedIPs());
         
         std::thread serverThread([&server]()
         {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "popl.hpp"
 
 namespace Utils
@@ -20,6 +22,7 @@ namespace Utils
 
         std::string getCertificatePath() const;
         std::string getPrivateKeyPath() const;
+        std::set<std::string> getBlacklistedIPs() const;
 
         std::string getMySqlHost() const;
         int getMySqlPort() const;

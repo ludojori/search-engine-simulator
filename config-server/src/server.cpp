@@ -173,15 +173,15 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
 			
 			const std::string content = request->content.string();
 			validateJson(userSchemaJson, content);
-			const Utils::User user = parseUser(content);
+			const User user = parseUser(content);
 			
 			provider->insertUserSafe(user);
 			response->write(SimpleWeb::StatusCode::success_created, content);
@@ -213,15 +213,15 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
 
 			const std::string content = request->content.string();
 			validateJson(userSchemaJson, content);
-			const Utils::User user = parseUser(content);
+			const User user = parseUser(content);
 
 			provider->insertUserUnsafe(user);
 			response->write(SimpleWeb::StatusCode::success_created, content);
@@ -244,9 +244,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
-			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Internal) &&
+			   !provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
@@ -271,15 +271,15 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
 
 			const std::string content = request->content.string();
 			validateJson(pairSchemaJson, content);
-			const Utils::Pair pair = parsePair(content);
+			const Pair pair = parsePair(content);
 
 			provider->insertPairSafe(pair);
 			response->write(SimpleWeb::StatusCode::success_created, content);
@@ -302,9 +302,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
-			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Internal) &&
+			   !provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
@@ -329,9 +329,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
-			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Internal) &&
+			   !provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
@@ -373,9 +373,9 @@ void addResources(HttpsServer& server, std::shared_ptr<ConfigServer::Provider> p
 				throw HttpUnauthorized("Invalid username or password.");
 			}
 
-			if(!provider->isAuthorized(username, Utils::UserType::Internal) &&
-			   !provider->isAuthorized(username, Utils::UserType::Manager) &&
-			   !provider->isAuthorized(username, Utils::UserType::Admin))
+			if(!provider->isAuthorized(username, UserType::Internal) &&
+			   !provider->isAuthorized(username, UserType::Manager) &&
+			   !provider->isAuthorized(username, UserType::Admin))
 			{
 				throw HttpForbidden("User " + username + " is not authorized to perform this action.");
 			}
@@ -405,7 +405,7 @@ int main(int /*argc*/, char **argv)
 
 		std::cout << "Parsing " << configPath << "..." << std::endl;
 
-		Utils::Options options(configPath);
+		Options options(configPath);
 
 		std::cout << "Done." << std::endl;
 		std::cout << "Reading JSON schemas..." << std::endl;

@@ -13,6 +13,7 @@ namespace Utils
 
         _op.add<popl::Value<std::string>, popl::Attribute::required>("", "security.certificate_path", "", "server.crt");
         _op.add<popl::Value<std::string>, popl::Attribute::required>("", "security.private_key_path", "", "server.key");
+        _op.add<popl::Value<std::string>, popl::Attribute::optional>("", "security.blacklisted_ips", "A comma-separated list of blacklisted IP addresses.");
 
         _op.add<popl::Value<std::string>, popl::Attribute::required>("", "mysql.host", "The host used to connect to the MySQL database.", "127.0.0.1");
         _op.add<popl::Value<int>, popl::Attribute::required>("", "mysql.port", "The port used to connect to the MySQL database.", 3306);
@@ -61,6 +62,26 @@ namespace Utils
     std::string Options::getPrivateKeyPath() const
     {
         return _op.get_option<popl::Value<std::string>>("security.private_key_path")->value();
+    }
+
+    std::set<std::string> Options::getBlacklistedIPs() const
+    {
+        std::set<std::string> blacklistedIPs;
+        auto ips = _op.get_option<popl::Value<std::string>>("security.blacklisted_ips")->value();
+        if (!ips.empty())
+        {
+            size_t pos = 0;
+            while ((pos = ips.find(',')) != std::string::npos)
+            {
+                blacklistedIPs.insert(ips.substr(0, pos));
+                ips.erase(0, pos + 1);
+            }
+            if (!ips.empty())
+            {
+                blacklistedIPs.insert(ips);
+            }
+        }
+        return blacklistedIPs;
     }
 
     std::string Options::getMySqlHost() const
